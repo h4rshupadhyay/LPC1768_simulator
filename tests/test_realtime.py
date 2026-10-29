@@ -230,6 +230,89 @@ def test_live_runtime_freezes_and_reanchors_its_machine_clock(firmware):
         rt.close()
 
 
+@pytest.mark.parametrize('retained_hook', [False, True])
+def test_frequent_live_systick_does_not_starve_foreground_loop(retained_hook):
+    import io
+    from intelhex import IntelHex
+    from unicorn.arm_const import UC_ARM_REG_R0
+    image = bytearray(0x130)
+    struct.pack_into('<II', image, 0, 0x10008000, 0x101)
+    struct.pack_into('<I', image, 15 * 4, 0x121)
+    image[0x100:0x106] = bytes.fromhex('00200130fde7')  # R0++ loop
+    image[0x120:0x130] = bytes.fromhex('02490a6801320a607047000000700010')
+    ih = IntelHex()
+    ih.frombytes(image)
+    stream = io.StringIO()
+    ih.write_hex_file(stream)
+    clock = Clock()
+    machine = Machine(stream.getvalue(), realtime=True, clock_ns=clock)
+    machine.resume_clock()
+    machine.run(100, fast=True, timeout_us=0)
+    if retained_hook:
+        machine.run(1, timeout_us=0)
+    emu_start = machine.uc.emu_start
+    def host_gap_after_return(*args, **kwargs):
+        was_in_handler = machine.active_irq is not None
+        emu_start(*args, **kwargs)
+        if was_in_handler and machine.active_irq is None:
+            clock.advance(2_000_000)
+    machine.uc.emu_start = host_gap_after_return
+    machine.write_word(0xe000e014, 3999)  # 1 ms at reset 4 MHz
+    machine.write_word(0xe000e010, 7)
+    for expected in range(1, 5):
+        before = machine.uc.reg_read(UC_ARM_REG_R0)
+        clock.advance(2_000_000)  # another IRQ is pending on every host slice
+        machine.run(20000, fast=True, timeout_us=0)
+        assert machine.uc.reg_read(UC_ARM_REG_R0) > before
+        assert int.from_bytes(machine.uc.mem_read(MAILBOX, 4), 'little') == expected
+        assert machine.active_irq is None
+        assert (machine._block_hook is not None) == retained_hook
+
+
+@pytest.fixture(scope='module')
+def counter_hex():
+    return Compiler().compile((Path(__file__).parent / 'fixtures/realtime_counter.c').read_text()).hex
+
+
+def counter_machine(image):
+    clock = Clock()
+    machine = Machine(image, realtime=True, clock_ns=clock)
+    for a, b in [('CNA', 'CNA2'), ('CNB', 'CNB2'), ('CND', 'CNB1')]:
+        machine.board.connect(a, b)
+    machine.resume_clock()
+    machine.run(5000, timeout_us=0)
+    return machine, clock
+
+
+def test_compiled_millisecond_counter_rate_with_controlled_service_clock(counter_hex):
+    machine, clock = counter_machine(counter_hex)
+    transitions = {}
+    expected = [(63, 63, 63, pattern) for pattern in (6, 91, 79)]
+    for step in range(12400):
+        clock.advance(250_000)
+        machine.run(200, timeout_us=0)
+        if step % 16 == 15:
+            pattern = tuple(machine.snapshot()['segments'])
+            if pattern in expected and pattern not in transitions:
+                transitions[pattern] = clock.ns / 1_000_000_000
+    assert machine.error is None
+    for second, pattern in enumerate(expected, 1):
+        # Includes the display's persistence window and four-ms observation cadence.
+        assert second <= transitions.get(pattern, float('inf')) <= second + .15
+
+
+def test_compiled_polled_match_flag_coalesces_when_service_is_late(counter_hex):
+    machine, clock = counter_machine(counter_hex)
+    for _ in range(550):
+        clock.advance(2_000_000)
+        machine.run(400, timeout_us=0)
+    # 1,100 matches have elapsed but a single pending bit cannot queue two
+    # wait1ms returns per service slice. Firmware has not counted to 1,000.
+    assert machine.snapshot()['segments'] == [63, 63, 63, 63]
+    assert machine.error is None
+
+
+@pytest.mark.performance
 def test_millisecond_multiplexed_counter_advances_near_wall_clock_seconds():
     source = (Path(__file__).parent / 'fixtures/realtime_counter.c').read_text()
     rt = Runtime()
@@ -244,9 +327,10 @@ def test_millisecond_multiplexed_counter_advances_near_wall_clock_seconds():
             deadline = started + len(transitions) + 1.8
             while time.perf_counter() < deadline:
                 state = rt.snapshot()
+                observed_at = time.perf_counter()
                 assert state['error'] is None
-                if state['segments'] == expected:
-                    transitions.append(time.perf_counter() - started)
+                if state['segments'] == expected and observed_at <= deadline:
+                    transitions.append(observed_at - started)
                     break
                 time.sleep(.01)
             else:

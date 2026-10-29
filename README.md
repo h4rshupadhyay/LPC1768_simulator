@@ -12,40 +12,46 @@ with LEDs, switches, LCD, keypad, seven-segment displays, ADC and PWM.
 
 ## Build and run
 
-Requires **Windows**, **Python 3.10+**, and **Node.js 20.19+ or 22.12+**.
-To compile C, install **Keil ARM Compiler 5** with LPC17xx CMSIS and startup
-files at `C:\Keil\ARM`, or set `KEIL_ARM_ROOT` to your installation's `ARM`
-directory. Keil is not bundled; uploading a prebuilt `.hex` works without it.
+Requires **uv**, **Python 3.11–3.13** and **Bun**. The locked Zig/LLVM package
+compiles Cortex-M3 firmware on Linux, macOS and Windows. Keil is optional;
+existing Keil ARM5 installations can still be selected with `LPC_COMPILER=keil`
+and `KEIL_ARM_ROOT`. Clang/LLD and Arm GCC are additional optional backends.
 
-Run these commands from the repository folder in PowerShell:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-npm.cmd ci
-npm.cmd run build
-.\.venv\Scripts\python.exe -m simulator.server
+```sh
+uv sync --frozen
+bun install --frozen-lockfile
+bun run build
+uv run python -m simulator.server
 ```
 
-Open **http://127.0.0.1:8765**. On subsequent runs, double-click `start.bat`;
-it also installs missing dependencies and builds the frontend if absent.
-Use `stop.bat` to stop a service started by the launcher. After frontend changes,
-run `npm.cmd run build` again; after Python changes, restart the service.
+Open **http://127.0.0.1:8765**. On Windows, `start.bat` synchronizes missing
+Python dependencies and builds the frontend if needed. `stop.bat` stops a
+service launched that way. Compilation uses temporary output directories;
+no separately installed host compiler is needed for the default Zig backend.
+The checked-in ARM target libraries have pinned manifests and regeneration tools.
+See [native runtime setup](docs/NATIVE_RUNTIME.md).
 
 Choose a lab, write or upload C/HEX in **IDE**, and connect the required cables
 and jumpers on **Board** before running. See the [usage and wiring guide](docs/USAGE.md).
 
 ## Development and checks
 
-Keep the backend running and use `npm.cmd run dev` in a second terminal for
-frontend development. Backend tests that compile firmware require Keil ARM5.
-Browser tests reset the running simulator; use a separate lab session.
+Develop in an isolated checkout with its own environment and build output.
+Use port **8879** and set `LPC_LAB_URL=http://127.0.0.1:8879` for browser checks;
+do not run tests against the practice session on port 8765. On Windows,
+`start-isolated.bat` and `test-isolated.bat` set the development port.
 
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-npx.cmd playwright install chromium
-npm.cmd run test:browser
+```sh
+uv run python -m pytest -ra
+bun run build
 ```
+
+Functional tests cover compiled firmware, GPIO and wiring, timers, ADC, PWM,
+SysTick, debugging, error recovery and resource disposal. The host-dependent
+millisecond throughput benchmark is retained as an explicit performance run,
+with its current failure documented in [functional timing and host throughput](docs/REALTIME_PERFORMANCE.md).
+Windows/macOS CI is defined; a local Linux result does not certify those hosts.
+Frozen application packaging is deferred from this source contribution.
 
 ## Scope
 

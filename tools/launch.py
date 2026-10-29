@@ -25,14 +25,12 @@ def main():
             return False
     if not ready():
         python=ROOT/('.venv/Scripts/python.exe' if os.name=='nt' else '.venv/bin/python')
-        if not python.exists():
-            subprocess.run([sys.executable,'-m','venv',str(ROOT/'.venv')],check=True)
-        if subprocess.run([str(python),'-c','import unicorn, intelhex, flask'],capture_output=True).returncode:
-            subprocess.run([str(python),'-m','pip','install','-r',str(ROOT/'requirements.txt')],cwd=ROOT,check=True)
+        # Sync existing environments so older installations gain new dependencies.
+        subprocess.run(['uv', 'sync', '--frozen'], cwd=ROOT, check=True)
         if not (ROOT/'dist/index.html').exists():
-            npm='npm.cmd' if os.name=='nt' else 'npm'
-            subprocess.run([npm,'ci'],cwd=ROOT,check=True)
-            subprocess.run([npm,'run','build'],cwd=ROOT,check=True)
+            bun = 'bun.exe' if os.name == 'nt' else 'bun'
+            subprocess.run([bun, 'install'], cwd=ROOT, check=True)
+            subprocess.run([bun, 'run', 'build'], cwd=ROOT, check=True)
         (ROOT/'build').mkdir(exist_ok=True)
         with (ROOT/'build/server.log').open('a',encoding='utf-8') as log:
             process=subprocess.Popen([str(python),'-m','simulator.server'],cwd=ROOT,

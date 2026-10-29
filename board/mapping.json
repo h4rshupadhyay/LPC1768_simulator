@@ -10,7 +10,7 @@
     "CNA2": {"kind":"peripheral","purpose":"U8–U11 segment a,b,c,d,e,f,g,dp","pins":["SEG0","SEG1","SEG2","SEG3","SEG4","SEG5","SEG6","SEG7",null,"GND"]},
     "CNB2": {"kind":"peripheral","purpose":"U7 BCD digit address A–D; 0–3 select digits","pins":["DIG0","DIG1","DIG2","DIG3",null,null,null,null,null,"GND"]},
     "CNB3": {"kind":"peripheral","purpose":"SW3–SW18: columns 1–4, rows 1–4","pins":["COL0","COL1","COL2","COL3","ROW0","ROW1","ROW2","ROW3",null,"GND"]},
-    "CNB1": {"kind":"peripheral","purpose":"LD10 PWM on pin 1; SW2 on pin 7 (lab profile)","pins":["PWM_LED",null,null,null,null,null,"SW2",null,null,"GND"]},
+    "CNB1": {"kind":"peripheral","purpose":"LD10 on pin 1; SW2 on pin 7 (lab profile)","pins":["PWM_LED",null,null,null,null,null,"SW2",null,null,"GND"],"pinNotes":{"3":"MAT1.1 / TP4 (not modeled)","4":"CAP0.0 / RM4 (not modeled)"}},
     "CNAD": {"kind":"peripheral","purpose":"CN11 LCD: D4–D7, RS, E (JP16)","pins":["LCD0","LCD1","LCD2","LCD3","LCD_RS","LCD_EN",null,null,null,"GND"]}
   },
   "jumpers": {

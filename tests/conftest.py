@@ -18,7 +18,23 @@ from simulator.engine import Machine
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
-    setattr(item, 'audit_' + outcome.get_result().when, outcome.get_result())
+    report = outcome.get_result()
+    setattr(item, 'audit_' + report.when, report)
+    if report.when == 'teardown' and hasattr(item, '_hardware_audit_entry'):
+        folder, entry = item._hardware_audit_entry
+        phases = {phase: getattr(item, 'audit_' + phase, None)
+                  for phase in ('setup', 'call', 'teardown')}
+        entry['phases'] = {phase: result.outcome for phase, result in phases.items() if result}
+        failed = [(phase, result) for phase, result in phases.items() if result and result.failed]
+        if failed:
+            entry['status'] = 'ERROR' if any(phase != 'call' for phase, _ in failed) else 'FAIL'
+            entry['failure'] = '\n'.join(result.longreprtext for _, result in failed)
+        elif any(result and result.skipped for result in phases.values()):
+            entry['status'] = 'SKIP'
+        else:
+            entry['status'] = 'PASS' if phases['call'] and phases['call'].passed else 'ERROR'
+        with (folder / 'cases.jsonl').open('a', encoding='utf-8') as output:
+            output.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
 
 @pytest.fixture(autouse=True)
@@ -81,5 +97,5 @@ def hardware_audit_evidence(request, monkeypatch):
         })
     if report and report.failed:
         entry['failure'] = report.longreprtext
-    with (folder / 'cases.jsonl').open('a', encoding='utf-8') as output:
-        output.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    # Final status is assigned by makereport after all fixture teardowns finish.
+    request.node._hardware_audit_entry = (folder, entry)

@@ -1,0 +1,16 @@
+{
+  "zig_version": "0.15.2",
+  "source_url": "https://github.com/ziglang/zig/tree/0.15.2/lib/compiler_rt",
+  "entry_source_sha256": "46a73ce725f26b104c4c167a6baaa6bb4a7e39ceae662e619f8d816e88eddee1",
+  "target": "thumb-freestanding-eabi",
+  "cpu": "cortex_m3",
+  "optimization": "ReleaseSmall",
+  "function_sections": true,
+  "data_sections": true,
+  "unwind_tables": false,
+  "archive_sha256": "53be3758327f5092916c4713704b6892d315128d2089d03529aed4a356733c3e",
+  "license": "compiler-rt.LICENSE",
+  "build_command": "uv run python tools/build_compiler_runtime.py",
+  "zig_wheel_identity": "ziglang==0.15.2; platform wheel URLs and SHA-256 hashes are pinned in uv.lock",
+  "reproducibility": "Archive hash verifies included bytes; regeneration is not claimed bit-for-bit reproducible."
+}
