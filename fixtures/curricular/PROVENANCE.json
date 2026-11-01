@@ -1,0 +1,115 @@
+{
+  "repository": "https://git.aadit.cc/aadit/MIT-Curricular",
+  "revision": "5a7532e210edec2713b10705a3b97f5cf3b9d040",
+  "license": "Unlicense (see LICENSE)",
+  "files": [
+    {
+      "fixture": "Lab/Lab10/ADC.c",
+      "source_path": "ES/Lab/Lab10/ADC.c",
+      "sha256": "a9fd1df8f33247f8ee80cd069666556774f942bef4e1b5f38bd614272ad5d535",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab10/ADC_Display.c",
+      "source_path": "ES/Lab/Lab10/ADC_Display.c",
+      "sha256": "ee7cfb6a44b2b139df26f7f3f98071f1c93e851c34d043a4832ac0bcb7336a33",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab11/PWM.c",
+      "source_path": "ES/Lab/Lab11/PWM.c",
+      "sha256": "0ddca45ef29c6beba067c82caa35a4a6fb9081ea04380011c4ca591007955d03",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab11/PWM_Keyboard.c",
+      "source_path": "ES/Lab/Lab11/PWM_Keyboard.c",
+      "sha256": "4b7939c8517eb0a9675286784b1db0a707fa73efa100c11d82ee0ed1d37d7a04",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab6/BinaryUpCounter.c",
+      "source_path": "ES/Lab/LAB6/BinaryUpCounter.c",
+      "sha256": "4f0208c0f74156751ad54ea8acd5df87487c4ac9655dfc28f00f77d3dbda2f8d",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab6/init.c",
+      "source_path": "ES/Lab/LAB6/init.c",
+      "sha256": "2fc2eb81c33e1758583b648ed4731a17d20a9c307a4eb492d436dcaa4f3063fc",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab7/BinaryUP_PIN.c",
+      "source_path": "ES/Lab/Lab7/BinaryUP_PIN.c",
+      "sha256": "c9ec015cde726195219a68436df0f1347dd29dc7b323bb9f9efb394a7a68b609",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab7/JOHNSON_Up_Down_Same_GPIO.c",
+      "source_path": "ES/Lab/Lab7/JOHNSON_Up_Down_Same_GPIO.c",
+      "sha256": "a5c68496ad3911e5789c87162c1bfa3c6a93cf838c0476f9db2d1ea79910fe14",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab7/JOHNSON_Up_Down_Separate_GPIO.c",
+      "source_path": "ES/Lab/Lab7/JOHNSON_Up_Down_Separate_GPIO.c",
+      "sha256": "c7078658084df843c1d0754da2914381f12aa2602665fded9258c63e0db59f92",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab7/SwitchCounter.c",
+      "source_path": "ES/Lab/Lab7/SwitchCounter.c",
+      "sha256": "042470570dc546f709e2e516de1eb5968c4a91b1c2cf936d902a20e332200247",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab7/SwitchUPDOWN.c",
+      "source_path": "ES/Lab/Lab7/SwitchUPDOWN.c",
+      "sha256": "ce320cbd07bdf9be0617c91a172fe7bad47f9b4594dfb1cb44dedaab0a9f5af5",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab8/16KeyMatrixOn7Seg.c",
+      "source_path": "ES/Lab/Lab8/16KeyMatrixOn7Seg.c",
+      "sha256": "df661d12fbd9b05fadd7a44482206fb03a38257cdaaee8a3ae4da0ccb40514e7",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab9/LCD_DOUBLELINE.c",
+      "source_path": "ES/Lab/Lab9/LCD_DOUBLELINE.c",
+      "sha256": "787f0ce082fcc75b4ec8effce05742291ead5a701b5237df7a2784e1f0ec5a52",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab9/LCD_LOWERLINE.c",
+      "source_path": "ES/Lab/Lab9/LCD_LOWERLINE.c",
+      "sha256": "575da02ca43e431d0fef1713525d7e79f00fec1d43234d968963c9a0e8053557",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab9/LCD_UPPERLINE.c",
+      "source_path": "ES/Lab/Lab9/LCD_UPPERLINE.c",
+      "sha256": "abf1c3f1c18347a1ce84e33f2135e24185ce8debf2206c4bbaa0f0d9edefaec4",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab9/dice.c",
+      "source_path": "ES/Lab/Lab9/dice.c",
+      "sha256": "b3cb8ea57bf1a7733d2638abd22dfe8516b6a433522f3e86182f7a96ca98a464",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Lab/Lab9/keyp.c",
+      "source_path": "ES/Lab/Lab9/keyp.c",
+      "sha256": "1ed9f6e6f9f98cc84d0efbda738b680dc8527519680fcb9e6de209c218a997b7",
+      "comparison": "identical"
+    },
+    {
+      "fixture": "Project/code-without-7seg.c",
+      "source_path": "ES/Project/code-without-7seg.c",
+      "sha256": "4d16b8ee7325f51df09a4acdcdd0131de08c8c9f9c029c71a8196aa41a0080c3",
+      "comparison": "identical"
+    }
+  ]
+}

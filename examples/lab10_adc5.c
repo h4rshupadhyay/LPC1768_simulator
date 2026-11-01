@@ -65,7 +65,10 @@ unsigned adc_read(unsigned channel) {
   do {v=LPC_ADC->ADGDR;} while(!(v&(1u<<31))); return (v>>4)&4095;
 }
 
-int main(void) {unsigned raw,mv;setup();lcd_init();adc_init();lcd_text("AD0.5 POT1");
- while(1) {raw=adc_read(5);mv=raw*3300/4095;lcd_at(0x40);lcd_text("                ");lcd_at(0x40);
+int main(void) {unsigned raw,mv,previous=4096;setup();lcd_init();adc_init();lcd_text("AD0.5 POT1");
+ while(1) {raw=adc_read(5);mv=raw*3300/4095;
+ /* Keep the completed line visible until the input actually changes. */
+ if(raw!=previous) {lcd_at(0x40);lcd_text("                ");lcd_at(0x40);
  lcd_number(raw);lcd_text(" ");lcd_number(mv/1000);lcd_byte('.',1);
- lcd_byte('0'+(mv/100)%10,1);lcd_byte('0'+(mv/10)%10,1);lcd_byte('0'+mv%10,1);lcd_byte('V',1);delay(4000);} }
+ lcd_byte('0'+(mv/100)%10,1);lcd_byte('0'+(mv/10)%10,1);lcd_byte('0'+mv%10,1);lcd_byte('V',1);previous=raw;}
+ delay(4000);} }

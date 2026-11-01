@@ -19,6 +19,7 @@ class ADCPeripheral:
         self.machine = machine
         self.last_time = 0
         self.remaining = 0
+        self.period = 0
         self.channel = None
         self.sample = 0
         self.conversion_burst = False
@@ -59,7 +60,8 @@ class ADCPeripheral:
             m._fail(f'Unsupported ADC channel {channel}; only AD0.4 and AD0.5 are wired.')
             return
         self.channel = channel
-        self.remaining = self._period()
+        self.period = self._period()
+        self.remaining = self.period
         self.conversion_burst = self._burst()
         valid = m.function(1, 26 + channel) == 3 and (
             channel != 4 or m.board.jumpers['JP18'] == '2-3')
@@ -108,6 +110,13 @@ class ADCPeripheral:
             self.remaining = 0
             return
         m = self.machine
+        if self.channel is not None:
+            period = self._period()
+            if period != self.period:
+                # A live divider change preserves conversion progress rather
+                # than retaining the former clock rate for the entire sample.
+                self.remaining = (self.remaining * period + self.period - 1) // self.period
+                self.period = period
         budget = delta * (m.core_clock_hz() if m.realtime else 1)
         completed = 0
         while self.channel is not None and budget >= self.remaining:

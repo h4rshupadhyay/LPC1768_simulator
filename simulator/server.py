@@ -2,6 +2,8 @@
 from pathlib import Path
 import atexit
 import os
+import base64
+import binascii
 
 from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.exceptions import HTTPException
@@ -65,7 +67,7 @@ def create_app(runtime=None):
         source = body().get('source')
         if not isinstance(source,str):
             raise ValueError('Expected C source text.')
-        return jsonify(rt.compile(source))
+        return jsonify(rt.compile(source, body().get('language', 'c')))
 
     @app.post('/api/firmware')
     def firmware():
@@ -73,11 +75,19 @@ def create_app(runtime=None):
         name = data.get('name','Uploaded HEX')
         if not isinstance(name,str) or len(name)>200:
             raise ValueError('Firmware filename must be at most 200 characters.')
-        return jsonify(rt.load(data.get('hex'),name))
+        try:
+            elf = base64.b64decode(data.get('elfBase64', ''), validate=True)
+        except (ValueError, TypeError, binascii.Error) as e:
+            raise ValueError('Invalid base64 ELF.') from e
+        return jsonify(rt.load(data.get('hex'), name, elf=elf))
 
     @app.post('/api/control')
     def control():
         return jsonify(rt.control(body().get('action')))
+
+    @app.post('/api/debug')
+    def debug():
+        return jsonify(rt.debug(body()))
 
     @app.post('/api/physical')
     def physical():
@@ -100,7 +110,7 @@ def create_app(runtime=None):
     def frontend(name='index.html'):
         dist = ROOT/'dist'
         if not (dist/'index.html').is_file():
-            return 'Build the frontend first: npm install && npm run build',503
+            return 'Build the frontend first: bun install && bun run build',503
         return send_from_directory(dist,name)
 
     return app

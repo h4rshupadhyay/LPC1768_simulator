@@ -20,6 +20,7 @@ from unicorn.arm_const import (UC_ARM_REG_SP, UC_ARM_REG_PC, UC_ARM_REG_LR,
 from .board import Board
 from .displays import LCD, SevenSegment
 from .adc import ADCPeripheral
+from .systick import SysTick
 
 
 class FirmwareError(ValueError):
@@ -51,7 +52,9 @@ class Machine:
         self.pclk_fraction = {}
         self.segments, self.initial_sp, self.entry = self.validate_hex(hex_text)
         self.gpio = [GPIO() for _ in range(5)]
-        self.regs = {self.SC + 0xC4: 0x0408829E}
+        # UM10360 tables 46 and 654: PWM1 is powered and exception entry
+        # aligns the stack to eight bytes at reset.
+        self.regs = {self.SC + 0xC4: 0x040882DE, 0xE000ED14: 0x200}
         self.ticks = 0
         self.gpio_events = 0
         self.irq_count = 0
@@ -60,8 +63,10 @@ class Machine:
         self.seven = SevenSegment(window=50_000_000 if realtime else 300_000)
         self.enabled_irq = 0
         self.pending_irq = 0
+        self.pending_system = 0
         self.active_irq = None
         self.irq_frame = None
+        self._defer_irq_stop = False
         self.last_timer_tick = 0
         self.timer_fraction = {}
         self.adc_last = [0] * 8
@@ -69,6 +74,9 @@ class Machine:
         self.pwm_latched = {i: 0 for i in range(7)}
         self.board = Board(self)
         self.adc = ADCPeripheral(self)
+        self.systick = SysTick(self)
+        self.systick_last_tick = 0
+        self.systick_fraction = 0
         self.uc = Uc(UC_ARCH_ARM, UC_MODE_THUMB | UC_MODE_MCLASS)
         self.uc.mem_map(0, self.FLASH_SIZE)
         self.uc.mem_map(0x10000000, 0x8000)
@@ -77,7 +85,12 @@ class Machine:
             self.uc.mem_write(start, data)
         for base, size in [(0x40000000, 0x100000), (0x2009C000, 0x1000), (0xE000E000, 0x2000)]:
             self.uc.mmio_map(base, size, self._read, base, self._write, base)
-        self.uc.hook_add(UC_HOOK_BLOCK, self._block)
+        # Deterministic probes count every translated block. Live execution
+        # can synchronize wall-clock peripherals at MMIO and bounded slices,
+        # avoiding a Python callback on every iteration of a pure delay loop.
+        self._block_hook = None
+        if not self.realtime:
+            self._block_hook = self.uc.hook_add(UC_HOOK_BLOCK, self._block)
         self.uc.hook_add(UC_HOOK_INTR, self._interrupt)
         self.uc.reg_write(UC_ARM_REG_SP, self.initial_sp)
         self.uc.reg_write(UC_ARM_REG_PC, self.entry)
@@ -122,11 +135,9 @@ class Machine:
     def _block(self, uc, address, size, _):
         self.ticks += max(1, size // 2)
         self._tick_adc_now()
-        if self.ticks - self.last_timer_tick >= 64:
-            self._tick_timers_now()
-            self.last_timer_tick = self.ticks
+        self._tick_timers_now()
         # IRQs are delivered only between emulator slices. No nested interrupts.
-        if self.pending_irq & self.enabled_irq and self.active_irq is None and not uc.reg_read(UC_ARM_REG_PRIMASK):
+        if not self._defer_irq_stop and (self.pending_system or self.pending_irq & self.enabled_irq) and self.active_irq is None and not uc.reg_read(UC_ARM_REG_PRIMASK):
             uc.emu_stop()
 
     def _read(self, uc, offset, size, base):
@@ -169,13 +180,27 @@ class Machine:
 
     def gpio_value(self, port):
         g = self.gpio[port]
-        outputs = levels = 0
-        for n in range(32):
-            level = self.pin_output(port, n)
-            if level is not None:
-                outputs |= 1 << n
-                levels |= level << n
-        return (levels | (self.board.inputs(port) & ~outputs)) & ~g.mask & 0xFFFFFFFF
+        external_mask, external_value = self.board.sampled_gpio(port)
+        def zero_pairs(value):
+            value = ~(value | (value >> 1)) & 0x55555555
+            value = (value | (value >> 1)) & 0x33333333
+            value = (value | (value >> 2)) & 0x0F0F0F0F
+            value = (value | (value >> 4)) & 0x00FF00FF
+            return (value | (value >> 8)) & 0xFFFF
+        def pair_mask(offset):
+            base = self.PIN + offset + port * 8
+            return zero_pairs(self.regs.get(base, 0)) | (zero_pairs(self.regs.get(base + 4, 0)) << 16)
+        gpio_functions = pair_mask(0)
+        pullups = pair_mask(0x40)
+        open_drain = self.regs.get(self.PIN + 0x68 + port * 4, 0)
+        driven = g.direction & gpio_functions & ~(open_drain & g.latch)
+        value = (g.latch & driven) | (pullups & ~driven)
+        if port == 1 and self.function(1, 23) == 2:
+            pwm = self.pin_output(1, 23)
+            if pwm is not None:
+                value = (value & ~(1 << 23)) | (pwm << 23)
+        value = (value & ~external_mask) | external_value
+        return value & ~g.mask & 0xFFFFFFFF
 
     def observe(self):
         if self.realtime:
@@ -239,12 +264,17 @@ class Machine:
             off = address - self.ADC
             if off in (0, 4, 0xC, 0x30, 0x34) or 0x10 <= off <= 0x2C and off % 4 == 0:
                 return self.adc.read(off)
+        if 0xE000E010 <= address <= 0xE000E01C:
+            self._tick_timers_now()
+            return self.systick.read(address - 0xE000E010)
+        if address == 0xE000ED04:
+            return self.regs.get(address, 0) | (int(bool(self.pending_system & (1 << 15))) << 26)
         if address == 0xE000E100 or address == 0xE000E180:
             return self.enabled_irq
         if address in (0xE000E200,0xE000E280):
             return self.pending_irq
         if address == 0xE000E300:
-            return 0 if self.active_irq is None else 1 << self.active_irq
+            return 0 if self.active_irq is None or self.active_irq < 0 else 1 << self.active_irq
         if address == 0xE000ED00:
             return 0x410FC231
         if address in (0xE000ED04,0xE000ED08,0xE000ED0C,0xE000ED10,0xE000ED14) or 0xE000E400 <= address <= 0xE000E420:
@@ -292,9 +322,9 @@ class Machine:
             return
         if self.SC <= address <= self.SC+0x1C8 and address-self.SC in self._sc_offsets():
             self._tick_adc_now()
-            if self.realtime:
-                # Account the elapsed interval before changing clock or power.
-                self._tick_timers_now()
+            # Account the preceding interval at the old clock/power settings
+            # in both wall-clock and deterministic execution modes.
+            self._tick_timers_now()
             if address == self.SC+0x140:
                 self.regs[address] = self.regs.get(address, 0) & ~value
             else:
@@ -303,6 +333,16 @@ class Machine:
             return
         if address in (self.ADC,self.ADC+0xC,self.ADC+0x34):
             self.adc.write(address - self.ADC, value, mask)
+            return
+        if 0xE000E010 <= address <= 0xE000E01C:
+            self._tick_timers_now()
+            self.systick.write(address - 0xE000E010, value, mask)
+            return
+        if address == 0xE000ED04:
+            if value & (1 << 25):
+                self.pending_system &= ~(1 << 15)
+            if value & (1 << 26):
+                self.pending_system |= 1 << 15
             return
         if address == 0xE000E100:
             self.enabled_irq |= value
@@ -399,6 +439,9 @@ class Machine:
             delta = max(0, now - self._clock_anchor)
             self._clock_anchor = now
             self.elapsed_ns += delta
+            total = self.systick_fraction + delta * self.core_clock_hz()
+            core_ticks, self.systick_fraction = divmod(total, 1_000_000_000)
+            self.systick.advance(core_ticks)
             for base in (*self.TIMERS, self.PWM):
                 if not delta or not self._timer_running(base):
                     continue
@@ -406,6 +449,8 @@ class Machine:
                 clocks, self.pclk_fraction[base] = divmod(total, 1_000_000_000)
                 self._advance_prescaler(base, clocks)
         else:
+            self.systick.advance(self.ticks - self.systick_last_tick)
+            self.systick_last_tick = self.ticks
             delta = self.ticks - self.last_timer_tick
             if delta:
                 self._advance_timers(delta)
@@ -431,11 +476,12 @@ class Machine:
         for base in (*self.TIMERS, self.PWM):
             if not self._timer_running(base):
                 continue
-            # Offline mode preserves deterministic instruction-derived timing.
-            divider = self.regs.get(base+0xC,0)+1
+            # Offline ticks represent deterministic core-clock progress. The
+            # same PCLK selection and readable PR/PC prescaler still apply.
+            divider = max(1, self.core_clock_hz() // self.peripheral_clock_hz(base))
             count = self.timer_fraction.get(base,0) + delta
-            steps, self.timer_fraction[base] = divmod(count, divider*4)
-            self._advance_counter(base, steps)
+            clocks, self.timer_fraction[base] = divmod(count, divider)
+            self._advance_prescaler(base, clocks)
 
     def _advance_counter(self, base, steps):
         if not steps:
@@ -483,9 +529,9 @@ class Machine:
                 counter=0
             if stop:
                 self.regs[base+4]&=~1
-                if self.realtime:
-                    self.regs[base+0x10] = 0
-                    self.pclk_fraction[base] = 0
+                self.regs[base+0x10] = 0
+                self.pclk_fraction[base] = 0
+                self.timer_fraction[base] = 0
                 break
             # IR flags latch rather than queue. Batch whole reset periods after
             # a host stall so a fast PWM cannot cause millions of Python loops.
@@ -525,12 +571,14 @@ class Machine:
 
     def pwm_level(self):
         """Instantaneous single-edge PWM1.4 electrical output (not brightness)."""
+        self._tick_timers_now()
         if not self._pwm_enabled():
             return None
         phase = (self.regs.get(self.PWM+8, 0) - 1) & 0xFFFFFFFF
         return int(phase < self.pwm_latched[4])
 
     def pwm_duty(self):
+        self._tick_timers_now()
         good = self._pwm_enabled()
         # An open-drain pad cannot source current into LD10's grounded load.
         if self.regs.get(self.PIN + 0x6C, 0) & (1 << 23):
@@ -541,23 +589,30 @@ class Machine:
 
     def _deliver_irq(self):
         pending = self.pending_irq & self.enabled_irq
-        if not pending or self.active_irq is not None or self.uc.reg_read(UC_ARM_REG_PRIMASK):
+        if not (pending or self.pending_system) or self.active_irq is not None or self.uc.reg_read(UC_ARM_REG_PRIMASK):
             return
-        irq = (pending & -pending).bit_length()-1
+        irq = -1 if self.pending_system & (1 << 15) else (pending & -pending).bit_length()-1
         vtor = self.regs.get(0xE000ED08,0) & 0xFFFFFF80
         handler = int.from_bytes(self.uc.mem_read(vtor+(16+irq)*4,4),'little')
         if not handler & 1:
             raise FirmwareError(f'IRQ {irq} has no valid Thumb handler in the vector table.')
         regs = [UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_R3,
                 UC_ARM_REG_R12,UC_ARM_REG_LR,UC_ARM_REG_PC,UC_ARM_REG_XPSR]
-        sp = self.uc.reg_read(UC_ARM_REG_SP)-32
-        self.uc.mem_write(sp, struct.pack('<8I', *(self.uc.reg_read(r) for r in regs)))
+        original_sp = self.uc.reg_read(UC_ARM_REG_SP)
+        padding = 4 if self.regs.get(0xE000ED14, 0) & (1 << 9) and original_sp & 4 else 0
+        sp = original_sp - 32 - padding
+        values = [self.uc.reg_read(r) for r in regs]
+        values[-1] = (values[-1] & ~(1 << 9)) | (int(bool(padding)) << 9)
+        self.uc.mem_write(sp, struct.pack('<8I', *values))
         self.irq_frame = sp
         self.uc.reg_write(UC_ARM_REG_SP, sp)
         self.uc.reg_write(UC_ARM_REG_LR, 0xFFFFFFF9)
         self.uc.reg_write(UC_ARM_REG_XPSR, (self.uc.reg_read(UC_ARM_REG_XPSR) & ~511) | (16+irq))
         self.uc.reg_write(UC_ARM_REG_PC, handler)
-        self.pending_irq &= ~(1<<irq)
+        if irq == -1:
+            self.pending_system &= ~(1 << 15)
+        else:
+            self.pending_irq &= ~(1<<irq)
         self.active_irq = irq
         self.irq_count += 1
 
@@ -583,23 +638,64 @@ class Machine:
             regs = [UC_ARM_REG_R0,UC_ARM_REG_R1,UC_ARM_REG_R2,UC_ARM_REG_R3,
                     UC_ARM_REG_R12,UC_ARM_REG_LR,UC_ARM_REG_PC,UC_ARM_REG_XPSR]
             for r,v in zip(regs,vals):
-                uc.reg_write(r,v)
-            uc.reg_write(UC_ARM_REG_SP,sp+32)
+                uc.reg_write(r, v & ~(1 << 9) if r == UC_ARM_REG_XPSR else v)
+            uc.reg_write(UC_ARM_REG_SP,sp+32+(4 if vals[-1] & (1 << 9) else 0))
             self.active_irq = None
             self.irq_frame = None
             uc.emu_stop()
         else:
             self._fail(f'Unsupported CPU exception {intno} at PC 0x{uc.reg_read(UC_ARM_REG_PC):08X}.')
 
-    def run(self, instructions=20000, *, timeout_us=100_000):
+    def invalidate_translations(self):
+        # Native Unicorn does not retrofit newly added hooks into translated
+        # loops. The WASM bridge instruments blocks from its first execution
+        # and has no ctl_remove_cache API.
+        invalidate = getattr(self.uc, 'ctl_remove_cache', None)
+        if invalidate is not None:
+            for start, end in ((0, self.FLASH_SIZE), (0x10000000, 0x10008000),
+                               (0x2007C000, 0x20084000)):
+                invalidate(start, end)
+
+    def run(self, instructions=20000, *, timeout_us=None, until=None, fast=False):
         if self.error:
             raise FirmwareError(self.error)
+        if timeout_us is None:
+            # Offline instruction budgets must not be shortened by host load.
+            # The live Runtime supplies its own short responsiveness deadline.
+            timeout_us = 100_000 if self.realtime else 0
         try:
+            if self._block_hook is None and not fast:
+                self._block_hook = self.uc.hook_add(UC_HOOK_BLOCK, self._block)
+                self.invalidate_translations()
             self._tick_timers_now()
             self._refresh_interrupts()
             self._deliver_irq()
             pc = self.uc.reg_read(UC_ARM_REG_PC)
-            self.uc.emu_start(pc | 1, self.FLASH_SIZE, count=instructions, timeout=timeout_us)
+            # EXC_RETURN stops Unicorn so we can restore the software frame.
+            # In live mode, reserve part of this bounded slice for foreground
+            # work after that return. Otherwise a 1 ms SysTick on a slower host
+            # can become pending before every slice and starve main forever.
+            live_irq = fast and self.realtime and self.active_irq is not None
+            first_budget = max(1, instructions // 2) if live_irq else instructions
+            self.uc.emu_start(pc | 1, self.FLASH_SIZE if until is None else until,
+                              count=first_budget, timeout=timeout_us)
+            remaining = instructions - first_budget
+            if live_irq and self.active_irq is None and remaining and not self.error:
+                pc = self.uc.reg_read(UC_ARM_REG_PC)
+                # A retained precise hook still records dwell and pending
+                # flags, but may not cancel this reserved foreground budget.
+                self._defer_irq_stop = True
+                try:
+                    self.uc.emu_start(pc | 1, self.FLASH_SIZE if until is None else until,
+                                      count=remaining, timeout=timeout_us)
+                finally:
+                    self._defer_irq_stop = False
+            if self._block_hook is None:
+                # This is a scheduling budget, not a cycle counter. A timeout
+                # or exception return may retire fewer instructions.
+                self.ticks += instructions
+            self._tick_timers_now()
+            self._tick_adc_now()
             if self.error:
                 raise FirmwareError(self.error)
         except UcError as e:
@@ -621,6 +717,7 @@ class Machine:
         return {'leds':[bool(signals.get(f'LED{i}',0)) for i in range(8)],
                 'lcd':self.lcd.lines(self.board.jumpers['JP16'] == 'closed'),
                 'segments':segments,'pwm':pwm,'cables':self.board.cables[:],
+                **self.board.wiring_snapshot(signals),
                 'jumpers':dict(self.board.jumpers),'pots':dict(self.board.pots),
                 'keys':sorted(self.board.keys),'sw2':self.board.sw2,'sw2Pin':self.board.sw2_pin,
                 'ticks':self.ticks,'elapsedSeconds':self.elapsed_ns / 1_000_000_000,

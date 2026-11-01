@@ -1,0 +1,567 @@
+{
+  "name": "newlib",
+  "version": "4.4.0.20231231-2",
+  "target": "thumb/v7-m/nofp, ARMv7-M Cortex-M3 soft-float",
+  "upstream": "https://sourceware.org/newlib/",
+  "packages": {
+    "https://archive.ubuntu.com/ubuntu/pool/universe/n/newlib/libnewlib-arm-none-eabi_4.4.0.20231231-2_all.deb": "9af508599193d07c9460897d01a36af46a2707765bd6941e27c6d0747859b0eb",
+    "https://archive.ubuntu.com/ubuntu/pool/universe/n/newlib/libnewlib-dev_4.4.0.20231231-2_all.deb": "f945b12c3abc844e76eebc28cf7d99e9aefd7caec39583116ef29556b3c52414"
+  },
+  "licenses": [
+    "NEWLIB-COPYRIGHT"
+  ],
+  "files": {
+    "lib/libc.a": {
+      "bytes": 4758516,
+      "sha256": "4c5b3898fd67a0e4e709498fba773f4411050a436b21b5ba12d6635083211f81"
+    },
+    "lib/libm.a": {
+      "bytes": 1745202,
+      "sha256": "d94e9802bfe7e961f9bbd74f0a258294971ff68c06dcd00e3af0dd8ef81bc457"
+    },
+    "NEWLIB-COPYRIGHT": {
+      "bytes": 36391,
+      "sha256": "0383bc85177c121b1ee5e00ff07f51d0cab2dd5bbe51875fdff01a91c234c3ae"
+    },
+    "include/_ansi.h": {
+      "bytes": 2625,
+      "sha256": "5c6403b471ee897c9a6c12e00a58617247804eb3ee72d7baeb7c08616090dd1d"
+    },
+    "include/_newlib_version.h": {
+      "bytes": 336,
+      "sha256": "bfc4b55e8665b5c4ae407e090a6aac2fb829905f04a5a7519686631eb1633fff"
+    },
+    "include/_syslist.h": {
+      "bytes": 1201,
+      "sha256": "4854135fb4359f0a94414cf1411a0ef919102b859a320f0a0c5bc16cad84beba"
+    },
+    "include/alloca.h": {
+      "bytes": 412,
+      "sha256": "fdebd60de65105d933b55dcde1650f6c9b3cf6142c225397c5f956638208d4de"
+    },
+    "include/ar.h": {
+      "bytes": 2721,
+      "sha256": "175fb88b901e13ec66f1b057a02ffb2eb312d19cf462dd5bc7bb6c39fbebb7e2"
+    },
+    "include/argz.h": {
+      "bytes": 1337,
+      "sha256": "24aa4dd94a5b1d542ae5638cb0232ae5115e0040e029c535581fd7b0a3ebc3a4"
+    },
+    "include/assert.h": {
+      "bytes": 1172,
+      "sha256": "76d2c321e49e268077d5e6f14e3da71b8f1e28ced650fe3cd403261b3d09923f"
+    },
+    "include/complex.h": {
+      "bytes": 4343,
+      "sha256": "95438e27ce26e4b6a94e0ce57ee9cd3d4ad8f49de7f4dfcd4b5d7f4ffd0ebf46"
+    },
+    "include/cpio.h": {
+      "bytes": 1072,
+      "sha256": "70007b46d90fb58e511086afe37241abe27a54464105418b41c2b0cc541a1d61"
+    },
+    "include/ctype.h": {
+      "bytes": 6046,
+      "sha256": "ec663418676640bb11abdd350e08066d25b31ac9084dc58bec29bff192372456"
+    },
+    "include/devctl.h": {
+      "bytes": 2609,
+      "sha256": "58da00906fa207a9ebbb8b0b34c2de8858b54ee6ab75ea3328bb7dba5eab4b44"
+    },
+    "include/dirent.h": {
+      "bytes": 3099,
+      "sha256": "0550c4bab3be7a0a4b225ea4ba2f60d3a4476222adeeb486e8d21fa015870fcd"
+    },
+    "include/elf.h": {
+      "bytes": 75903,
+      "sha256": "ec24622d27f989cde00b6843fe088f0b4423842f6ab16b549a2238b52c39d6a4"
+    },
+    "include/envlock.h": {
+      "bytes": 350,
+      "sha256": "09f86b8887f4b636701b99199a6b5184755c33174ce7b68035aa60c364ff5f53"
+    },
+    "include/envz.h": {
+      "bytes": 781,
+      "sha256": "de0aaab946479a0d95063cfbfcab5793487a5a0b19e051f7be3c3319c351b347"
+    },
+    "include/errno.h": {
+      "bytes": 174,
+      "sha256": "53d288d669b43f2341048bf58bc5e6e46a5cfbe68c6d296a3b2e2f1378ac3ca8"
+    },
+    "include/fastmath.h": {
+      "bytes": 185,
+      "sha256": "7fb7ff119150be066f9e06ea4afa62c4fd13def8a15d3dde3968d57d7f82ba66"
+    },
+    "include/fcntl.h": {
+      "bytes": 23,
+      "sha256": "637889253928e98bc028dbdcd58560492aed8e981eff349c43a8e7e6a45f75f5"
+    },
+    "include/fenv.h": {
+      "bytes": 1111,
+      "sha256": "950a1a60988c93532171fc60b08e690afbdf9bc75509001344e43d4a910abd2e"
+    },
+    "include/fnmatch.h": {
+      "bytes": 2325,
+      "sha256": "3a6ca8bce057d57213e430ebff2ebb478d55edcc2fe844eebf13326f2e272f9a"
+    },
+    "include/ftw.h": {
+      "bytes": 2343,
+      "sha256": "a1cf28b60e5950867c27091afbdf29a40b8894db47be6906c9b65b52410f6213"
+    },
+    "include/getopt.h": {
+      "bytes": 6564,
+      "sha256": "3cc4000afb3722b80000c39012d826aeaf15451d05fb77228eeb982558bf26f0"
+    },
+    "include/glob.h": {
+      "bytes": 3787,
+      "sha256": "6f5f880b43e6a992ce9dc2ce475d0c903f07a24599768cd97dd010e56348e049"
+    },
+    "include/grp.h": {
+      "bytes": 3073,
+      "sha256": "d1124c6cd4b46a7becd189d5e21a5afbce82e4e0b5f3f398729af40ab94e80ed"
+    },
+    "include/iconv.h": {
+      "bytes": 2127,
+      "sha256": "0a91edea4d05ac47f67e8c67e3928445b1079d033fd0c94cd167f94456af25ed"
+    },
+    "include/ieeefp.h": {
+      "bytes": 6446,
+      "sha256": "b5832d987da4574360acb486ee2dc93e9300ae0ee8001219cb2e41c3df43225e"
+    },
+    "include/inttypes.h": {
+      "bytes": 9726,
+      "sha256": "de91bd3417f3c69ace8b332edea2ff3db8a7fddb4f61cb6017272a06e5727837"
+    },
+    "include/langinfo.h": {
+      "bytes": 8459,
+      "sha256": "c58b3d439f010c9e86e5c294bb72afa7a5dd9982ef8e4a33f4ad68e6bbe12875"
+    },
+    "include/libgen.h": {
+      "bytes": 854,
+      "sha256": "b8abf8738f130d5d9085af48ae67449a76ea0b6e7b39124a1a36dd23eb96728f"
+    },
+    "include/limits.h": {
+      "bytes": 3888,
+      "sha256": "16b91bb4b4f7053ddfbbe6ec0925d901093499468151289d5c224d718ec25e44"
+    },
+    "include/locale.h": {
+      "bytes": 2213,
+      "sha256": "57f6e78fbadeb001c48e5cec88f273c3d20200752218a5f4aea56045ca62c46f"
+    },
+    "include/machine/_arc4random.h": {
+      "bytes": 51,
+      "sha256": "88a214651e481bc693c67b4c00447cb3f08f3c13285c9971fae24bf4630176ae"
+    },
+    "include/machine/_default_types.h": {
+      "bytes": 6650,
+      "sha256": "5d8f9f7ead7927e4b8b7ed00172e84f2ae82ea7f5f6ba3240ff813a9236771b3"
+    },
+    "include/machine/_endian.h": {
+      "bytes": 1773,
+      "sha256": "4b886bc7fadb6712ef700478167e0b2cf921563bbf5a0f0beacb4925ff016f31"
+    },
+    "include/machine/_time.h": {
+      "bytes": 91,
+      "sha256": "30d5767d9856a34b13effab3cc2663bc48d77eaf778d313f243b25015dfe1d8b"
+    },
+    "include/machine/_types.h": {
+      "bytes": 112,
+      "sha256": "44544ecbbc10c8aa58ca2da6d0617ffeee5af847af24515ab108c8218d6d92c8"
+    },
+    "include/machine/ansi.h": {
+      "bytes": 48,
+      "sha256": "b8920447822ad8f3d5698a3fd70cd0c72d28c1b4d0a57f849ce6e6ccdca2ce72"
+    },
+    "include/machine/endian.h": {
+      "bytes": 1725,
+      "sha256": "c9cb16333e537785dde867ed059915ef2d09661dbab7cc8b4519b646735eace4"
+    },
+    "include/machine/fastmath.h": {
+      "bytes": 2804,
+      "sha256": "a8ceea7a1395306b3cd8c9046eaca22bfe6ce26b146a86ed27c85d36aa26bda3"
+    },
+    "include/machine/ieee.h": {
+      "bytes": 2989,
+      "sha256": "d42f5669c165d20aca5a6ce9aba49e8fd0daac842cec2898240d1d69ea5f865a"
+    },
+    "include/machine/ieeefp.h": {
+      "bytes": 11362,
+      "sha256": "a01f46795677820323740962d3bbf519a68e426556b345590778302cf8aec2e8"
+    },
+    "include/machine/malloc.h": {
+      "bytes": 138,
+      "sha256": "c6e33eb2fa8cf9038cf4114d87df62468b476caffb045f33949ba97fcaf78a79"
+    },
+    "include/machine/param.h": {
+      "bytes": 146,
+      "sha256": "bde4406d15552135792423511db3a557c29dec9b8fbc77da5ab947cbf6484ee2"
+    },
+    "include/machine/setjmp-dj.h": {
+      "bytes": 947,
+      "sha256": "4b50c451e3f13d626d70a8087a2749fdc21c24cefa63ba416d0f07da92499765"
+    },
+    "include/machine/setjmp.h": {
+      "bytes": 10696,
+      "sha256": "11d1eda7b71e095c460bc0610a0e789da8c066bca2f021eb8e81b210755d27b2"
+    },
+    "include/machine/stdlib.h": {
+      "bytes": 138,
+      "sha256": "43552e520d412993325ba62cb496839cd03fd46b0df67149a5ccbe1b95c45fdd"
+    },
+    "include/machine/termios.h": {
+      "bytes": 29,
+      "sha256": "d6e16ee56b728aff179afd72ac18247320a64c124e43060a9d96261be2ea462c"
+    },
+    "include/machine/time.h": {
+      "bytes": 384,
+      "sha256": "ac7672170b5e2df1fe1d40a9aa5a83356e7df9c221de771c8dbf79da68e0757d"
+    },
+    "include/machine/types.h": {
+      "bytes": 372,
+      "sha256": "3be8e785d201f2972db6a96ae1adb4263227623c7e298aded1a662cb8da93ea3"
+    },
+    "include/malloc.h": {
+      "bytes": 4166,
+      "sha256": "bfe98e78707f66256511d839874b60c9f5d1424510faedce6c8e71c118175a8a"
+    },
+    "include/math.h": {
+      "bytes": 20534,
+      "sha256": "af8b612e6f341fdaab6d30f154e1c24b18695cc0a8dc17b6e98da3cb3ecfdb72"
+    },
+    "include/memory.h": {
+      "bytes": 80,
+      "sha256": "026f83881db9f03068affceaa81aea160f603e11f3c9d657f7140e7af9bb8fc9"
+    },
+    "include/nano/newlib.h": {
+      "bytes": 11820,
+      "sha256": "4e9bd2f2f525cf92501bc8fef4eee4f987ef13e085184a13b2c30f29d4fcaf66"
+    },
+    "include/ndbm.h": {
+      "bytes": 3208,
+      "sha256": "647ce1aeeb03c1f2a0d4658086f91c8ccd333a926b0a2328fcfbbdf0a667639a"
+    },
+    "include/newlib.h": {
+      "bytes": 11814,
+      "sha256": "0619448830450327f5f6797bc2a2c92c3b89d77628d4f6252b458e5e09ff4efa"
+    },
+    "include/paths.h": {
+      "bytes": 193,
+      "sha256": "d8a6145404b72ccff930347f8301720350ed3bc11febaf4a1ede636fcb5c8a0c"
+    },
+    "include/pthread.h": {
+      "bytes": 15518,
+      "sha256": "1ddd9fcec7ec2adf28170517f5cc317ffc0b9541e686a2bb039f9f87da166b25"
+    },
+    "include/pwd.h": {
+      "bytes": 2762,
+      "sha256": "daa01af6624320d0896b33a4744e1deefa97b0cc79d523ecf2c1ca12be018414"
+    },
+    "include/reent.h": {
+      "bytes": 8617,
+      "sha256": "e14cbe8accb69ed01d32145ecc45f902d0b237042245051c00d319cbf0aa72a0"
+    },
+    "include/regdef.h": {
+      "bytes": 220,
+      "sha256": "e889cdb89b2b0c335eeaff98d11bd5cb455118c798d66d6239130860558197d9"
+    },
+    "include/regex.h": {
+      "bytes": 3562,
+      "sha256": "3ee2a3455b2a2444c160c0da92e63db6116e5c23f9c6249fa91f1335d5dac32f"
+    },
+    "include/sched.h": {
+      "bytes": 2699,
+      "sha256": "f764c017b8afb592a04b39c21df42a3c50c5d7276e692e6de64be67bd5c1f522"
+    },
+    "include/search.h": {
+      "bytes": 1367,
+      "sha256": "83dddcba8f3ae086761221b81f1b525bbf199d7446b9d4d853f1ba7c59d924ec"
+    },
+    "include/setjmp.h": {
+      "bytes": 361,
+      "sha256": "0fddf586b71d441243c6daae9431999872533020d2d39db8a3362d30b754b547"
+    },
+    "include/signal.h": {
+      "bytes": 774,
+      "sha256": "663ea64d0ea7288f6b7bd4c9c61a28b182a0199278bc39bf5e1cd9570cf24d39"
+    },
+    "include/spawn.h": {
+      "bytes": 4393,
+      "sha256": "72c3fb78eb8da9ca91b69381f98936d7a73412650169831358d132b1838d237c"
+    },
+    "include/ssp/ssp.h": {
+      "bytes": 2916,
+      "sha256": "3ea87dfe55db5773138465743a152231147bb5adc2576aae916ed3404457a640"
+    },
+    "include/ssp/stdio.h": {
+      "bytes": 3622,
+      "sha256": "4cb15cadb5685fe3bc36f6f33004629998521989f48a8b1b8410432b7342f1f5"
+    },
+    "include/ssp/stdlib.h": {
+      "bytes": 721,
+      "sha256": "f6de6e2501ed2ffacd320d9f8deccf84dc1e863082fcb51dfdae5f5c0f6c853d"
+    },
+    "include/ssp/string.h": {
+      "bytes": 4903,
+      "sha256": "0f6d463ff5059a383367572bdaad0232182fe606f793037eeb0837365c80252d"
+    },
+    "include/ssp/strings.h": {
+      "bytes": 2224,
+      "sha256": "76988b929dea6588f918e1b19c61e1cf68fec64fc7999d86f19682129c83b2fb"
+    },
+    "include/ssp/unistd.h": {
+      "bytes": 3456,
+      "sha256": "69893f53a3029623af416e662e5997e7b4043b9086c05f0fac42ca290e0c19fe"
+    },
+    "include/ssp/wchar.h": {
+      "bytes": 3155,
+      "sha256": "ad25221c5db89238d6d0fe16b2b98ee76bd1ca9a073d7a277a91d24685501f14"
+    },
+    "include/stdatomic.h": {
+      "bytes": 14203,
+      "sha256": "b4dd0cc757f9af844ae4b28550d1bcc6ed2d0b25badba259884630ad471b0dec"
+    },
+    "include/stdint.h": {
+      "bytes": 12432,
+      "sha256": "99fe201684856075ccd92704f63b702f6fa882b9dab61bd7a9bcce2588275861"
+    },
+    "include/stdio.h": {
+      "bytes": 29660,
+      "sha256": "c900e320b44518e1a214792b8caf7cffa683fda7bae2cb70714bdcd8087fe2f8"
+    },
+    "include/stdio_ext.h": {
+      "bytes": 1799,
+      "sha256": "9c150a3ae08e82d3876a25a254eb8a19b9e80bd7e94e68d38ac4b0b7909404fd"
+    },
+    "include/stdlib.h": {
+      "bytes": 11687,
+      "sha256": "c9b59cff66dd5f523dae818c7268959c7c640461ce6723913fc2732acb01a962"
+    },
+    "include/string.h": {
+      "bytes": 5555,
+      "sha256": "79722fe25a7d01447fee06a0b8efe7535c1b891568730ba154a139c59c068ffc"
+    },
+    "include/strings.h": {
+      "bytes": 2788,
+      "sha256": "743121afb2f530045eb63bcfa3fdbc4ecf555131bd1cf7ce36a268f758bb4be5"
+    },
+    "include/sys/_default_fcntl.h": {
+      "bytes": 7371,
+      "sha256": "2cad995f7a48ee7821c5569c42464785db5733335803a790f386b6ce268e2df5"
+    },
+    "include/sys/_intsup.h": {
+      "bytes": 5741,
+      "sha256": "1af8abe244b43a3a5b5a85f6c834aa206930b6938e8109fbec430bc140b68df5"
+    },
+    "include/sys/_locale.h": {
+      "bytes": 247,
+      "sha256": "adc8e11513e5f83a0c73ac641c256815b0aa6cc8a09a43d2c97b1ee79db9f154"
+    },
+    "include/sys/_pthreadtypes.h": {
+      "bytes": 7510,
+      "sha256": "e0924bdccdc1b9983c51436971b690cd58024aa7c56b83f3e076bfc4f51091b6"
+    },
+    "include/sys/_sigset.h": {
+      "bytes": 2087,
+      "sha256": "16e78626ff97ef85ec70ba9898082fccf70b741b0c6586c57e4421fc60b9a07d"
+    },
+    "include/sys/_stdint.h": {
+      "bytes": 1824,
+      "sha256": "49f8328943afa2a83ed4a35fcb808ed08b8c9fcb55373c786fb1b1d3a21952d7"
+    },
+    "include/sys/_timespec.h": {
+      "bytes": 2173,
+      "sha256": "cea8007561c4c9285063cc2f941a284d008e9f044fdfa346572e8bb39f236391"
+    },
+    "include/sys/_timeval.h": {
+      "bytes": 2188,
+      "sha256": "976b01c11c44422953444b3f612ca6a7d41d70569e25a4c0674e9f8899101b22"
+    },
+    "include/sys/_types.h": {
+      "bytes": 5094,
+      "sha256": "1abe39aca5104bafbde2e0219e7cdc3e96129b22ce1ef5cd58b66d8d147d3fb7"
+    },
+    "include/sys/_tz_structs.h": {
+      "bytes": 540,
+      "sha256": "19c466e74992b819d44b4862ff03ef36f5e3ad156b7bd8063636979bb0da1ff6"
+    },
+    "include/sys/cdefs.h": {
+      "bytes": 24504,
+      "sha256": "9dcd9f554b32c40791b8f081f34c83767c61c0bc567b4a486066edda39812f3e"
+    },
+    "include/sys/config.h": {
+      "bytes": 7342,
+      "sha256": "583e381e7184a477bcea569149f6154ccf4f0faa0829a9d8363954adb7aecf14"
+    },
+    "include/sys/custom_file.h": {
+      "bytes": 50,
+      "sha256": "7a8f3cc9612d591c93281dc05188d874e2dc7ebfce430f6f44e16b9b1e499bc7"
+    },
+    "include/sys/dir.h": {
+      "bytes": 171,
+      "sha256": "1b4d4865531636af9f7a493bbbb662e221b6bdfa5061807fbc5a237c94c5b68d"
+    },
+    "include/sys/dirent.h": {
+      "bytes": 395,
+      "sha256": "be21c82d8ce7898426689c520d0e01fb19d2dda10988ba3dac8f19514723882c"
+    },
+    "include/sys/endian.h": {
+      "bytes": 5169,
+      "sha256": "fa570b7f928985298b719bc01dc6c812ca99d13dfb75bd12b08711077b262167"
+    },
+    "include/sys/errno.h": {
+      "bytes": 7562,
+      "sha256": "5184f657d59c9adfa7e2eae5ffd2cb102643cac380e771bfc6a4977729a3df87"
+    },
+    "include/sys/fcntl.h": {
+      "bytes": 313,
+      "sha256": "29ca3a69bba00811217d263700ba86bf5b3d59b5fd1cc06f34c84751f6e44b87"
+    },
+    "include/sys/features.h": {
+      "bytes": 16235,
+      "sha256": "2d7e400fabf84aa8e46fc6fcd309c62eba66994de56a1e44a2d34a62522b0dca"
+    },
+    "include/sys/fenv.h": {
+      "bytes": 2800,
+      "sha256": "6d5f942af7c45acb07ea0fd7eb94ea0080e99afc8fba4cb34bb953d68e74ca66"
+    },
+    "include/sys/file.h": {
+      "bytes": 24,
+      "sha256": "c4e08fdb66f877ddc18fc704b7127aea39766f08593fa833d7f385beea0b5a35"
+    },
+    "include/sys/iconvnls.h": {
+      "bytes": 2714,
+      "sha256": "dbcc72531a4590fd2b94c75ef02730ed5a1985abbddc7ffee7dff26a4f23a0dc"
+    },
+    "include/sys/lock.h": {
+      "bytes": 2455,
+      "sha256": "f5cad9196ce745967fd2673e085b5c03df7887d4d11d7544aff05ff6679be6b8"
+    },
+    "include/sys/param.h": {
+      "bytes": 703,
+      "sha256": "e440a04d5d95c0712db3d434b03fbfd2e996c36eb3453fb26c6f7e62f142902c"
+    },
+    "include/sys/queue.h": {
+      "bytes": 30288,
+      "sha256": "c622d82410a368e1c437d38473b71fd796b538f9bc322f0a1ef45deb016d6e8b"
+    },
+    "include/sys/reent.h": {
+      "bytes": 29343,
+      "sha256": "29a835377b2aa6793ecc83d22fb1a6cedd4cb39da3370c07e5c6ba95cf40aeff"
+    },
+    "include/sys/resource.h": {
+      "bytes": 437,
+      "sha256": "e2a3dbfecb57ac82ce3d6fdcf042b879665b0b5d76cb37c52bda669a02e8e22b"
+    },
+    "include/sys/sched.h": {
+      "bytes": 1872,
+      "sha256": "a905a789e215093f6207948dc700e0ce9789cba8b491a6f1b58888a79b466526"
+    },
+    "include/sys/select.h": {
+      "bytes": 2609,
+      "sha256": "84e307e32daf383199e3c38f321e04fb1f99eb91d3606b01467d2fb103339e91"
+    },
+    "include/sys/signal.h": {
+      "bytes": 12424,
+      "sha256": "649554c762b965b91bd39b69d218be4a3289f3aa7098612ef6afe8ffe1b80669"
+    },
+    "include/sys/stat.h": {
+      "bytes": 5490,
+      "sha256": "60ee50c8151c9caaf4f687868a0eeef07f98f614759ddfbc7a63a4177deb9467"
+    },
+    "include/sys/stdio.h": {
+      "bytes": 799,
+      "sha256": "bd987ea6fed5d31d8a4e7d183a7d988e981ecca3cffce76ee482fcb0bf65594b"
+    },
+    "include/sys/string.h": {
+      "bytes": 116,
+      "sha256": "b7164ee36ccb0a08bc27c7e381ea417c97d8c3fd3157de62b75d2a6bf7a0a589"
+    },
+    "include/sys/syslimits.h": {
+      "bytes": 2974,
+      "sha256": "780971936dd4b8f3b192669e693430c204a72c7fb05e7a1db67d48f02cd9aec4"
+    },
+    "include/sys/time.h": {
+      "bytes": 11671,
+      "sha256": "4339fef02543373b805426f6b9540c9810737ad855082354981e027480bfce4f"
+    },
+    "include/sys/timeb.h": {
+      "bytes": 800,
+      "sha256": "208f4cf1df8d97e68b4a73c962ff3b0c5e0771bee39321dfaf7541b64dfa616e"
+    },
+    "include/sys/times.h": {
+      "bytes": 651,
+      "sha256": "c15b32414d3a99b24ce37ed444eec2e4b50e9ff18aecf4aa1e070cbaaa0c4954"
+    },
+    "include/sys/timespec.h": {
+      "bytes": 2411,
+      "sha256": "c2c2dfdcf9deacccb8919ff633f212afa455e4779a2d12c47b9afa0eff7d73c1"
+    },
+    "include/sys/tree.h": {
+      "bytes": 29739,
+      "sha256": "3ce1f66c8caf3b9cac49676952363bfc1293d26bfc6d98210fd42c2f6d4dd955"
+    },
+    "include/sys/types.h": {
+      "bytes": 5414,
+      "sha256": "659abc34a2db9f62109d06135699e72a8759cce553626aac5340bfd84988d8a7"
+    },
+    "include/sys/unistd.h": {
+      "bytes": 22314,
+      "sha256": "1d8bbee30843b785b7b6a85103b80fe56ebe902a82a0dcc6fe2895f2bf3c050e"
+    },
+    "include/sys/utime.h": {
+      "bytes": 363,
+      "sha256": "2bcd7d80d018eb7ef8912394fa6c84da8a2212fba9561db9e0b03d9ee8e40d34"
+    },
+    "include/sys/wait.h": {
+      "bytes": 977,
+      "sha256": "f1a190e79e4ae9b0bc2c25ddd011861f0d4eca08ae4c3159c58bba0e3ba29f15"
+    },
+    "include/tar.h": {
+      "bytes": 1389,
+      "sha256": "66008622fce9fe0b5c305e52bebc1dbc3291a5531682d886d575d4c4976f069a"
+    },
+    "include/termios.h": {
+      "bytes": 92,
+      "sha256": "fc13c1c649a2530491bed09e072743a931822b0faa826efb34e98bafd7373fa8"
+    },
+    "include/tgmath.h": {
+      "bytes": 8156,
+      "sha256": "4cee5f66824b507890fa22a0462ce46d177ca14345280e01d7bee660e01d42c9"
+    },
+    "include/threads.h": {
+      "bytes": 3040,
+      "sha256": "7b12eae65db429bc21f7f9480e43b09ecec8e09a14ef17b7a6c3b86739459354"
+    },
+    "include/time.h": {
+      "bytes": 7536,
+      "sha256": "3db85344e03099b886ec618b416a25954ee7613c9909ae16af9e99b4f3d9a8e2"
+    },
+    "include/unctrl.h": {
+      "bytes": 1938,
+      "sha256": "cd52a305a468bdb6aea3e6c03f9dcd7d40c2074f6b2a66ffceb17f7786c41897"
+    },
+    "include/unistd.h": {
+      "bytes": 89,
+      "sha256": "19f31553182c4d649dd0d6301ffdbb5b4d7903b28373dd070a553798b41f524f"
+    },
+    "include/utime.h": {
+      "bytes": 185,
+      "sha256": "be672799c1b20fc35446ee2bf6b3c800677f2168983a1c99b366cf8036dbc418"
+    },
+    "include/utmp.h": {
+      "bytes": 90,
+      "sha256": "0cf902b1dcfa51852a3127a012ef4e77182510b0c5c89dab89d522656366e237"
+    },
+    "include/wchar.h": {
+      "bytes": 12012,
+      "sha256": "dcb1f58b8913d4b617022a9f2c5804e9ec3f262670c78159a746032f44d55221"
+    },
+    "include/wctype.h": {
+      "bytes": 1770,
+      "sha256": "afdf3415c9a74cfbbc8942d83e25f277528e6638ccd2b18c1239c6d61c579930"
+    },
+    "include/wordexp.h": {
+      "bytes": 1526,
+      "sha256": "cb95592bd02595459a64ce2caab45c67564fa67b0110164aa00e38747b1448ee"
+    }
+  }
+}

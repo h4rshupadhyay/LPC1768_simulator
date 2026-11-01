@@ -65,6 +65,8 @@ unsigned adc_read(unsigned channel) {
   do {v=LPC_ADC->ADGDR;} while(!(v&(1u<<31))); return (v>>4)&4095;
 }
 
-int main(void) {int a,b,d;setup();lcd_init();adc_init();lcd_text("POT4 minus POT1");
+int main(void) {int a,b,d,previous=5000;setup();lcd_init();adc_init();lcd_text("POT4 minus POT1");
  while(1) {a=adc_read(4);b=adc_read(5);d=a-b;
- lcd_at(0x40);lcd_text("                ");lcd_at(0x40);lcd_number(d);lcd_text(" counts");delay(4000);} }
+ /* Redraw on a changed reading; repeatedly clearing the same line flickers. */
+ if(d!=previous) {lcd_at(0x40);lcd_text("                ");lcd_at(0x40);lcd_number(d);lcd_text(" counts");previous=d;}
+ delay(4000);} }
