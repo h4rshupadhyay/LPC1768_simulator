@@ -1,0 +1,13 @@
+.git
+.claude
+.venv
+.tools
+node_modules
+dist
+build
+test-results
+playwright-report
+**/__pycache__
+.pytest_cache
+*.pdf
+WhatsApp Image 2026-10-28 at 9.05.56 PM.jpeg

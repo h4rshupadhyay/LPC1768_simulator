@@ -1,0 +1,19 @@
+# Render Blueprint: the simulator backend (and full app) on Render's free plan.
+# The free instance has 512 MB and a fraction of a CPU, so it serves fewer visitors
+# and compiles one program at a time. It sleeps after 15 minutes without requests.
+services:
+  - type: web
+    name: lpc1768-simulator
+    runtime: docker
+    plan: free
+    dockerfilePath: ./deploy/docker/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /api/parts
+    envVars:
+      - key: LPC_MAX_SESSIONS
+        value: "3"
+      - key: LPC_COMPILE_SLOTS
+        value: "1"
+      - key: LPC_IDLE_SECONDS
+        value: "300"

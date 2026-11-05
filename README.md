@@ -42,7 +42,7 @@ Choose a lab, write or upload C/HEX in **IDE**, and connect the required cables
 and jumpers on **Board** before running. See the [usage and wiring guide](docs/USAGE.md).
 For external components open **Workbench**, or load one of its examples.
 
-To put the simulator online (Hugging Face Space backend, Vercel frontend, one simulator
+To put the simulator online (Render backend, Vercel frontend, one simulator
 per visitor, restricted compilation) see [public deployment](docs/DEPLOY.md).
 
 ## Development and checks

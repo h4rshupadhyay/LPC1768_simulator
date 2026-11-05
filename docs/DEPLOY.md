@@ -3,16 +3,16 @@
 The simulator needs a long-running Python process: each visitor's emulated LPC1768 lives in
 memory with its own CPU thread, and the Zig/LLVM compiler alone is ~370 MB. Vercel serverless
 functions are stateless and limited to 250 MB, so Vercel hosts only the frontend and forwards
-`/api` to a backend hosted on a free Hugging Face Space.
+`/api` to a backend running the Docker image on Render's free plan.
 
 ```
-browser ──► Vercel (dist/, static) ──/api, /board, /assets/board.jpg──► Hugging Face Space
-                                                                         uvicorn: Gradio page + Flask API
+browser ──► Vercel (dist/, static) ──/api, /board, /assets/board.jpg──► Render web service
+                                                                         gunicorn + Flask
                                                                          one Runtime per visitor
 ```
 
-Live: frontend https://lpc-1768-simulator-extended.vercel.app, backend Space
-https://huggingface.co/spaces/kavyyyyy/lpc1768-simulator (`https://kavyyyyy-lpc1768-simulator.hf.space`).
+Live: frontend https://lpc-1768-simulator-extended.vercel.app, backend
+https://lpc1768-simulator.onrender.com (which also serves the whole app by itself).
 
 ## Public mode
 
@@ -34,41 +34,41 @@ Restricted compilation keeps visitors from reading files on the server:
   inline asm is still unparsed text, so escapes and string concatenation cannot hide them.
 * The compiler runs with a minimal environment, so it never sees the server's variables.
 
-The Space holds no secrets: it builds the public GitHub repository.
+The image holds no secrets: it is built from the public repository.
 
-## Hugging Face Space
+## Docker image
 
-Free accounts get Gradio Spaces only (the Docker SDK and CPU Basic hardware need PRO), so the
-Space runs `deploy/huggingface/app.py`: one uvicorn server on port 7860 that sends `/api/*`,
-`/board/*` and `/assets/board.jpg` to the Flask simulator (through `a2wsgi`) and everything
-else to a small Gradio page linking to the frontend. No GPU is used.
-
-1. Create a Space at https://huggingface.co/new-space: SDK **Gradio**, template **Blank**,
-   the free hardware offered, visibility **Public**.
-2. Replace its files with the three in `deploy/huggingface/` (`app.py`, `requirements.txt`,
-   `README.md`). At startup `app.py` clones this repository's `main` branch.
-3. Wait for **Running**. `https://<user>-<space-name>.hf.space/api/parts` should return JSON.
-4. After pushing new commits to `main`, **Restart** the Space (Settings) so it clones again.
-
-A free Space sleeps after a period without visitors; the first request wakes it, which takes a
-minute or two (the page says to reload).
-
-## Vercel
-
-`vercel.json` builds the frontend into `dist/` and rewrites `/api/*`, `/board/*` and
-`/assets/board.jpg` to `https://kavyyyyy-lpc1768-simulator.hf.space`. If the Space host
-changes, change the three destinations and push. `LPC_ALLOWED_ORIGINS` (set in `app.py`)
-must match the Vercel domains: `https://lpc-1768-simulator-extended*.vercel.app` covers the
-production and preview URLs.
-
-## Any other Docker host
-
-`deploy/docker/Dockerfile` builds the frontend and serves the whole app in public mode with
-gunicorn (Render, Railway, a VPS, or a PRO Hugging Face Docker Space):
+`deploy/docker/Dockerfile` builds the frontend, installs the Python requirements, warms the
+compiler cache and serves the whole app in public mode with gunicorn on `$PORT` (default 7860):
 
 ```bash
-docker build -t lpc1768 deploy/docker
+docker build -f deploy/docker/Dockerfile -t lpc1768 .
 docker run -p 7860:7860 lpc1768
 ```
 
 Keep it to **one** worker process: the visitor simulators live in that process.
+
+## Render (free)
+
+`render.yaml` is a Render Blueprint for this image on the free plan, with 3 visitors and one
+compile at a time to fit 512 MB.
+
+1. Sign in at https://dashboard.render.com with GitHub.
+2. New → **Blueprint**, pick this repository, and apply `render.yaml`. The first build takes
+   several minutes.
+3. `https://<service>.onrender.com/api/parts` should return JSON.
+4. Every push to `main` redeploys automatically.
+
+The free plan has a fraction of a CPU: compiling takes longer than locally and fast firmware
+runs slower than real time. The service sleeps after 15 minutes without requests; the first
+request wakes it in about a minute (the page says to reload). Hugging Face Spaces were tried
+first, but free accounts can now only create GPU (ZeroGPU) Gradio Spaces, which refuse apps
+without GPU functions.
+
+## Vercel
+
+`vercel.json` builds the frontend into `dist/` and rewrites `/api/*`, `/board/*` and
+`/assets/board.jpg` to `https://lpc1768-simulator.onrender.com`. If the backend address
+changes, change the three destinations and push. `LPC_ALLOWED_ORIGINS` (set in the
+Dockerfile) must match the Vercel domains: `https://lpc-1768-simulator-extended*.vercel.app`
+covers the production and preview URLs.
