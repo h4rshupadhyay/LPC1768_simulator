@@ -1,8 +1,11 @@
-import {useCallback,useEffect,useLayoutEffect,useRef,useState} from 'react';
+import {Suspense,lazy,useCallback,useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {api} from './api';
 import {Board} from './Board';
 import {ExerciseSolution} from './ExerciseSolution';
 import {CSource} from './CSource';
+// three.js is large; only the Workbench screen loads it.
+const Workbench=lazy(()=>import('./workbench/Workbench').then(m=>({default:m.Workbench})));
+import {DebugPanel} from './DebugPanel';
 import type {Info,State,Layout,Exercise} from './types';
 import {reconcileViewState,type ViewState} from './viewState';
 
@@ -18,10 +21,10 @@ int main(void)
 }
 `;
 
-type Screen='board'|'ide'|'labs';
+type Screen='board'|'bench'|'ide'|'labs';
 const currentScreen=():Screen=>{
  const hash=window.location.hash.slice(1);
- return hash==='ide'||hash==='labs'?hash:'board';
+ return hash==='ide'||hash==='labs'||hash==='bench'?hash:'board';
 };
 
 export function App() {
@@ -89,7 +92,7 @@ export function App() {
  useEffect(()=>{localStorage.setItem('lpc-lab-source',source);},[source]);
  useEffect(()=>{localStorage.setItem('lpc-lab-exercise',exercise);},[exercise]);
  useEffect(()=>{
-  document.title=`LPC1768 · ${screen==='board'?'Board':screen==='ide'?'IDE':'Lab exercises'}`;
+  document.title=`LPC1768 · ${screen==='board'?'Board':screen==='bench'?'Workbench':screen==='ide'?'IDE':'Lab exercises'}`;
  },[screen]);
  useEffect(()=>{
   const navigate=()=>{
@@ -128,13 +131,14 @@ export function App() {
   try{await queue.current;publishState(await api<State>('/api/control',{action}));setError('');}
   catch(e){setError((e as Error).message);}
  };
- const compile=async()=>{
+ const compile=async(override?:string)=>{
   if(firmwareBusy.current)return;
   firmwareBusy.current=true;
   setBusy(true);setError('');setBuildError('');setMessage('Compiling…');
   requestNumber.current++;
   revision.current++;
-  const code=source;
+  const code=override??source;
+  if(override!==undefined){latestSource.current=override;setSource(override);setFirmwareKind('c');}
   try{
    const result=await api<{state:State;hex:string;diagnostics:string}>('/api/compile',{source:code});
    publishState(result.state);setHex(result.hex);setDirty(latestSource.current!==code);setFirmwareKind('c');setMessage(result.diagnostics);
@@ -199,6 +203,7 @@ export function App() {
    <div className="identity"><div className="chip-logo">M3</div><h1>LPC1768 <span>Virtual Lab</span></h1></div>
    <nav className="screen-nav" aria-label="Workspace">
    <a href="#board" aria-current={screen==='board'?'page':undefined}>Board</a>
+   <a href="#bench" aria-current={screen==='bench'?'page':undefined}>Workbench</a>
    <a href="#ide" aria-current={screen==='ide'?'page':undefined}>IDE</a>
    <a href="#labs" aria-current={screen==='labs'?'page':undefined}>Lab exercises</a>
    </nav>
@@ -292,7 +297,10 @@ export function App() {
      {runtimeControls}
     </div>
     {diagnostics}
+    <DebugPanel loaded={state.loaded} status={state.status}/>
    </section>}
+   {screen==='bench'&&<Suspense fallback={<p className="loading">Loading 3D workbench…</p>}><Workbench info={info} layout={layout} state={state} publish={publishState} compileSource={code=>compile(code)}
+    control={action=>{void control(action);}} runtimeControls={runtimeControls}/></Suspense>}
    {screen==='labs'&&<section className="labs-panel" aria-label="Lab exercises">
     <div className="panel-heading"><h2>Lab exercises</h2></div>
     {spec&&<ExerciseSolution exercise={spec} compiling={busy} onOpen={openSolution} onDownload={download}/>}

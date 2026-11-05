@@ -1,9 +1,10 @@
 # Development isolation
 
-The user is practising for examinations in `C:\Users\harsh\Downloads\lpc_simulator`
-on branch `main`. This is the practice checkout, including when this file is read
-from that directory. Develop in `C:\Users\harsh\Downloads\lpc_simulator-performance`
-(branch `perf/smoother-ui`) or another isolated worktree.
+The user practises for examinations in the primary checkout
+`C:\Users\kavyk\OneDrive\Desktop\Projects\LPC1768_simulator_extended` on branch
+`main`. This is the practice checkout, including when this file is read from that
+directory. Develop in `.claude\worktrees\open-workbench` (branch
+`worktree-open-workbench`) or another isolated worktree.
 
 - Do not edit, build, stash, reset, or run tests in the practice checkout during development.
 - Do not send test requests to its server on port 8765 or restart that server during development.

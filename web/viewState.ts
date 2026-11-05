@@ -4,7 +4,14 @@ import type {State} from './types';
 // The full, current execution diagnostics remain available through /api/state.
 export type ViewState=Pick<State,
  'status'|'loaded'|'firmwareName'|'diagnostics'|'error'|
- 'leds'|'lcd'|'segments'|'pwm'|'cables'|'jumpers'|'pots'|'keys'|'sw2'|'warnings'>;
+ 'leds'|'lcd'|'segments'|'pwm'|'cables'|'jumpers'|'pots'|'keys'|'sw2'|'warnings'>&
+ Partial<Pick<State,'circuit'|'terminals'|'target'|'timing'|'speed'|'floating'|'notes'|'mbedLeds'>>;
+
+// The workbench payload (parts, findings, terminals) is compared as one serialized
+// value; it changes far less often than the 50 ms poll and is small.
+function workbenchKey(s:ViewState){
+ return JSON.stringify([s.circuit,s.terminals,s.target,s.timing,s.speed,s.floating,s.notes,s.mbedLeds]);
+}
 
 function sameArray(a:readonly unknown[],b:readonly unknown[]):boolean {
  return a.length===b.length&&a.every((value,index)=>value===b[index]);
@@ -25,6 +32,7 @@ export function reconcileViewState(previous:ViewState|null,next:ViewState):ViewS
   sameArray(previous.warnings,next.warnings)&&
   sameRecord(previous.jumpers,next.jumpers)&&sameRecord(previous.pots,next.pots)&&
   previous.cables.length===next.cables.length&&
-  previous.cables.every((pair,index)=>sameArray(pair,next.cables[index])))return previous;
+  previous.cables.every((pair,index)=>sameArray(pair,next.cables[index]))&&
+  workbenchKey(previous)===workbenchKey(next))return previous;
  return next;
 }

@@ -24,12 +24,12 @@ results. No gap below is hidden by a skipped or expected-failure test.
 |---|---|---|
 | S01 | UNSUPPORTED | LCD busy timing, minimum E width, setup/hold requirements, command delays and invalid rapid writes. Correct nibble order can appear to work despite physically insufficient delays. This is an important remaining false-positive risk. |
 | S02 | UNSUPPORTED | Rendering custom CGRAM glyphs, controller-specific character ROM, visible cursor/blink and a complete 8-bit LCD interface. CGRAM addressing is tested without claiming custom glyph rendering. |
-| S03 | UNSUPPORTED | Nested/prioritized NVIC scheduling, tail chaining, SysTick, PendSV/SVC/fault handlers, complete BASEPRI/FAULTMASK/MSP/PSP behavior and IRQ32+. Stored priority/core-control fields do not implement these effects. |
+| S03 | PARTIAL | Priority preemption with PRIGROUP grouping, nesting, PendSV, SVC, IRQ32–34 and SHPR/AIRCR (including SYSRESETREQ) are modeled; tail chaining is approximated by return-then-deliver. BASEPRI/FAULTMASK, MSP/PSP switching and HardFault/MemManage/BusFault handlers are not (faults stop with an explanation and source line). |
 | S04 | UNSUPPORTED | DMA, bit-band aliases, MPU/protection faults, faithful flash programming/IAP, boot-ROM/ISP behavior and SRAM power-cycle contents. Mapped flash/RAM is not a complete memory-system model. |
-| S05 | UNSUPPORTED | ADC channels other than board-routed AD0.4/5, external START edges, analog trim effects and variable VREF. Hardware START settings arm without falsely converting immediately, but the corresponding physical trigger paths are absent. |
-| S06 | UNSUPPORTED | Timer external counting/capture, EMR waveforms and capture/match loopback JP14/RM4/TP4; PWM double-edge and external-count operation, other output pads, motor PWM and DMA. Accepted register storage must not be treated as implemented behavior. External-count mode no longer reports a fictitious periodic PWM duty. |
-| S07 | UNSUPPORTED | UART, SPI/SSP, I2C/RTC, I2S, CAN, USB, Ethernet, DAC, watchdog, relay, buzzer, stepper/DC motor and other drawn board functions. Their artwork is not an electrical simulation. |
-| S08 | UNSUPPORTED | Individual flying leads, reversed/damaged ribbons, splitters, supply disconnection and electrical effects of most board jumpers. JP4/5/16/18 are modeled. JP7/8/12/13/17 selectors retain browser state only. |
+| S05 | PARTIAL | All eight channels sample their pads (kit POT1/POT4 on AD0.5/AD0.4; solved circuit voltages elsewhere). External START edges, trim effects and a variable VREF are absent. |
+| S06 | PARTIAL | Timer capture, counter mode and EMR match outputs, PWM1.1–1.6 single/double edge on every PINSEL pad are modeled. The kit's JP14/RM4/TP4 loopback routes, MCPWM outputs, PWM external count and DMA are not. |
+| S07 | PARTIAL | UART0–3, SSP0/1, legacy SPI, I2C0–2 master, DAC, RIT, WDT, RTC and QEI are modeled at register/transaction level and talk to Workbench parts. I2S, CAN, USB, Ethernet, slave modes and the kit's on-board UART/SPI/I2C devices, relay, buzzer and motors remain artwork only. |
+| S08 | PARTIAL | Individual flying leads to header pins and the Workbench's breadboards are modeled, with DC voltages and currents for nets containing parts. Reversed/damaged ribbons, splitters, supply disconnection and most board jumpers are not; JP7/8/12/13/17 retain browser state only. |
 | S09 | UNSUPPORTED | Complete PLL feed/lock sequencing, oscillator startup, illegal-frequency enforcement, PCGPIO gating of GPIO/PINCON accesses, sleep/power-down, brownout/reset causes, AIRCR system reset, and GPIO repeater retention. Startup-compatible register responses can accept a clock or power program that real hardware rejects. |
 
 ## Timing and execution approximations
@@ -82,3 +82,14 @@ on hardware even when text appears here. Use verified GPIO, ribbons/jumpers,
 keypad coordinates, LCD transactions, ADC control/ideal codes, timer setup and
 single-edge PWM within their tested scope. Treat the unsupported paths and
 unmeasured electrical/timing behavior above as boundaries of this simulator.
+
+## Workbench electrical model
+
+Nets that contain an external part or a supply rail are solved at DC by nodal
+analysis with piecewise-linear diodes, BJTs and MOSFETs (`simulator/solver.py`).
+Pad drive (3.3 V behind ~70 Ω), pull-ups (~50 µA) and ratings come from the NXP
+data sheet; part ratings come from their data sheets. There is no capacitance,
+inductive transient, temperature dependence or noise. Damage is a teaching model:
+an absolute maximum exceeded for 50 ms of simulated time. Transaction-level buses
+mean pads do not toggle bit by bit during UART/SPI/I2C frames. The ALS power tap
+position and on-board I2C pull-ups are assumptions. See [docs/WORKBENCH.md](docs/WORKBENCH.md).

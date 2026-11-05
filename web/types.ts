@@ -10,6 +10,10 @@ export interface State {
  leds:boolean[];lcd:string[];segments:number[];pwm:number;cables:Pair[];jumpers:Record<string,string>;
  pots:Record<string,number>;keys:number[];sw2:boolean;sw2Pin:number;ticks:number;gpioEvents:number;lcdEdges:number;
  interrupts:number;pc:string;warnings:string[];gpio:{direction:string;latch:string}[];
+ wires?:[string,string][];headerPins?:Record<string,{node:string|null;level:number|null;conflict:boolean;note?:string}[]>;
+ notes?:[string,string][];target?:'als'|'mbed'|'bare';timing?:string;speed?:number;floating?:string;
+ circuit?:import('./workbench/types').CircuitState;terminals?:Record<string,import('./workbench/types').TerminalState>;
+ mbedLeds?:boolean[];peripherals?:Record<string,unknown>;simSeconds?:number;
 }
 export interface Layout {
  width:number;height:number;referencePhoto:string;headers:Record<string,[number,number]>;jumpers:Record<string,[number,number]>;

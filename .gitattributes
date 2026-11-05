@@ -1,0 +1,2 @@
+# Reviewed corpus files are hash-checked byte for byte; never convert line endings.
+fixtures/** -text

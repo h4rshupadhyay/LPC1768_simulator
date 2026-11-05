@@ -4,6 +4,13 @@ A local simulator of the ALS-SDA-ARMCTXM3-01 board for Labs 6–11. Run real
 Cortex-M3 firmware with Unicorn, connect ribbon cables and jumpers, and experiment
 with LEDs, switches, LCD, keypad, seven-segment displays, ADC and PWM.
 
+The **Workbench** extends this beyond the kit: an LPC1768 on the ALS kit, an mbed
+LPC1768 module or a bare chip, 63 external components on breadboards in a 3D bench,
+UART/SPI/I2C/DAC and the remaining on-chip peripherals, a serial monitor, and a
+**Circuit Doctor** that explains wiring and electrical mistakes (with numbers),
+models part damage and proposes fixes such as voltage dividers. See
+[the Workbench guide](docs/WORKBENCH.md).
+
 ## Screenshots
 
 | Interactive board | C editor |
@@ -33,6 +40,7 @@ See [native runtime setup](docs/NATIVE_RUNTIME.md).
 
 Choose a lab, write or upload C/HEX in **IDE**, and connect the required cables
 and jumpers on **Board** before running. See the [usage and wiring guide](docs/USAGE.md).
+For external components open **Workbench**, or load one of its examples.
 
 ## Development and checks
 
@@ -55,9 +63,11 @@ Frozen application packaging is deferred from this source contribution.
 
 ## Scope
 
-Timers, PWM and ADC use modeled peripheral timing; CPU execution and software
-delays depend on host speed. This is a tested digital subset, not a cycle-accurate
-or complete LPC1768 replacement. No physical-board equivalence is claimed.
+Timers, PWM, ADC, UART, SSP/SPI, I2C, DAC, RIT, WDT and RTC use modeled peripheral
+timing; CPU execution and software delays depend on host speed unless the Precise
+timing mode is selected. External circuits are solved at DC with simplified device
+models. This is a tested subset, not a cycle-accurate or complete LPC1768
+replacement. No physical-board equivalence is claimed.
 
 [Lab coverage](docs/LAB_COVERAGE.md) · [Hardware specification](HARDWARE_SPEC.md) ·
 [Test report](TEST_REPORT.md) · [Known limitations](HARDWARE_FIDELITY_GAPS.md)

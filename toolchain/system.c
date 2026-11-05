@@ -2,16 +2,29 @@
 #include "LPC17xx.h"
 uint32_t SystemCoreClock = 100000000u;
 
-/* Same default clock frequency as the original Keil/CMSIS lab startup.
- * This configures the simulator's documented clock subset. Real hardware
- * requires the oscillator/PLL lock/feed sequencing from a complete SDK.
+static void pll0_feed(void) {
+  LPC_SC->PLL0FEED = 0xAA;
+  LPC_SC->PLL0FEED = 0x55;
+}
+
+/* Same default clock frequency as the original Keil/CMSIS lab startup:
+ * 12 MHz crystal, PLL0 M = 100, N = 6 (FCCO = 400 MHz), CCLK = FCCO / 4 = 100 MHz.
+ * Follows the UM10360 section 4.5.13 sequence, including the PLL0FEED writes
+ * that real hardware requires before PLL0CON/PLL0CFG changes take effect.
  */
 void SystemInit(void) {
-  LPC_SC->SCS = 0x20;
+  LPC_SC->SCS = 0x20;                    /* main oscillator enable */
+  while (!(LPC_SC->SCS & 0x40)) {}       /* wait for OSCSTAT */
   LPC_SC->CLKSRCSEL = 1;
-  LPC_SC->CCLKCFG = 3;
   LPC_SC->PLL0CFG = 0x00050063;
-  LPC_SC->PLL0CON = 3;
+  pll0_feed();
+  LPC_SC->PLL0CON = 1;                   /* enable */
+  pll0_feed();
+  LPC_SC->CCLKCFG = 3;
+  while (!(LPC_SC->PLL0STAT & (1u << 26))) {}  /* PLOCK0 */
+  LPC_SC->PLL0CON = 3;                   /* enable and connect */
+  pll0_feed();
+  while ((LPC_SC->PLL0STAT & (3u << 24)) != (3u << 24)) {}
   LPC_SC->PCLKSEL0 = 0;
   LPC_SC->PCLKSEL1 = 0;
   SystemCoreClockUpdate();

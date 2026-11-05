@@ -163,3 +163,14 @@ input[type=range]{cursor:pointer}
  .board-view .pots{padding:8px;gap:8px}
 }
 @media(pointer:coarse){button,select,.screen-nav a{min-height:36px}}
+.debug-panel{border-top:1px solid var(--border);padding:6px 12px}
+.debug-panel summary{cursor:pointer;color:var(--text-secondary);font-size:12px}
+.debug-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.debug-console{background:var(--editor);border:1px solid var(--border);border-radius:5px;padding:6px;min-height:80px;max-height:220px;overflow:auto;font:12px Consolas,monospace;white-space:pre-wrap;margin:4px 0 0}
+.debug-actions{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
+.debug-actions form{display:flex;gap:4px}
+.debug-actions input{background:var(--editor);color:var(--text);border:1px solid var(--control-border);border-radius:5px;padding:3px 5px}
+.debug-registers{font:11px Consolas,monospace;border-collapse:collapse}
+.debug-registers td{padding:1px 6px;border-bottom:1px solid #2a3644}
+.bench-view .app-shell,.app-shell.bench-view{max-width:none}
+.debug-toggle{border:0;background:transparent;color:var(--text-secondary);padding:2px 0}

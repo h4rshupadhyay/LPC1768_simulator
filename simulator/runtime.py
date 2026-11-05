@@ -7,20 +7,31 @@ import time
 
 from .engine import Machine, FirmwareError
 from .compiler import Compiler
-from .board import MAPPING
+from .board import MAPPING, TARGETS
 from .debugger import Debugger
+from .terminal import Terminal
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = json.loads((ROOT / 'examples/catalog.json').read_text(encoding='utf-8'))
+TIMING_MODES = ('realtime', 'precise')
 
 
 class Runtime:
-    def __init__(self, start_worker=True, *, realtime=None):
+    def __init__(self, start_worker=True, *, realtime=None, target='als'):
         self.lock = threading.RLock()
         self.wake = threading.Event()
         self.closed = threading.Event()
-        self.realtime = start_worker if realtime is None else realtime
-        self.machine = Machine((ROOT / 'examples/idle.hex').read_text(), realtime=self.realtime)
+        # `live` paces execution against the wall clock; `realtime` additionally
+        # derives peripheral time from it. Precise mode keeps live pacing but
+        # runs every peripheral on deterministic instruction-derived time.
+        self.live = start_worker if realtime is None else realtime
+        self.timing = 'realtime'
+        self.realtime = self.live
+        self.target = target
+        self.terminals = {0: Terminal('UART0 (PC serial port)', 9600, 0)}
+        self._pace = None
+        self.speed = 1.0
+        self.machine = self._new_machine((ROOT / 'examples/idle.hex').read_text())
         self.debugger = Debugger(self.machine)
         self.loaded = False
         self.status = 'empty'
@@ -32,21 +43,26 @@ class Runtime:
             self.thread = threading.Thread(target=self._worker, name='lpc1768-cpu', daemon=True)
             self.thread.start()
 
+    def _new_machine(self, hex_text):
+        machine = Machine(hex_text, realtime=self.realtime, target=self.target)
+        machine.terminals = self.terminals
+        return machine
+
     def _worker(self):
         while not self.closed.is_set():
             self.wake.wait(.1)
             if not self.wake.is_set():
                 continue
-            self._run_slice()
+            delay = self._run_slice()
             # Yield to API/input threads without adding a 2 ms floor to each
             # firmware slice (the user's timer polling interval can be 1 ms).
-            time.sleep(0)
+            time.sleep(delay or 0)
 
     def _run_slice(self):
         with self.lock:
             if self.status != 'running':
                 self.wake.clear()
-                return
+                return 0
             try:
                 limit = self.debugger.execution_limit()
                 # Keep instruction dwell for multiplexed displays and precise
@@ -57,15 +73,50 @@ class Runtime:
                                  and self.machine.board.has_signal_connection('DIG')))
                 self.machine.run(20000, timeout_us=1000, until=limit, fast=fast)
                 self.debugger.complete_slice(limit)
+                if self.machine.reset_requested:
+                    reason = self.machine.reset_requested
+                    self._reset(running=True)
+                    self.diagnostics = reason
+                    return 0
                 if self.debugger.hit:
                     self.machine.pause_clock()
                     self.status = 'paused'
                     self.wake.clear()
+                return self._pace_delay()
             except FirmwareError as e:
                 self.status = 'error'
-                self.diagnostics = str(e)
+                self.diagnostics = self._explain(str(e))
                 self.wake.clear()
                 self.machine.pause_clock()
+                return 0
+
+    def _pace_delay(self):
+        """Precise mode: keep simulated time from running ahead of the wall clock."""
+        if self.realtime or not self.live:
+            return 0
+        now = time.perf_counter_ns()
+        simulated = self.machine.time_ns()
+        if self._pace is None:
+            self._pace = (now, simulated)
+            return 0
+        wall0, sim0 = self._pace
+        wall, sim = now - wall0, simulated - sim0
+        if wall > 1_000_000_000:
+            self.speed = min(1.0, sim / wall) if wall else 1.0
+            self._pace = (now - min(wall, 50_000_000), simulated - min(sim, int(50_000_000 * self.speed)))
+        ahead = sim - wall
+        return min(0.02, ahead / 1e9) if ahead > 0 else 0
+
+    def _explain(self, message):
+        """Attach the C source line of the faulting instruction when debug data exists."""
+        try:
+            pc = self.machine.uc.reg_read(__import__('unicorn').arm_const.UC_ARM_REG_PC) & ~1
+            source = self.debugger.source(pc)
+        except Exception:
+            source = None
+        if source:
+            return f'{message} ({source["file"].split("/")[-1]}:{source["line"]})'
+        return message
 
     def close(self):
         self.closed.set()
@@ -99,12 +150,34 @@ class Runtime:
         b.pots = dict(old.pots)
         b.sw2, b.sw2_pin = old.sw2, old.sw2_pin
         b.keys = set(old.keys)
+        # The external circuit and any physical damage outlive an MCU reset.
+        if old.target == b.target:
+            circuit = old.circuit
+            circuit.board = b
+            b.circuit = circuit
+            for part in circuit.parts.values():
+                part.reset_transient()
+            circuit.touch()
+            candidate.damaged_pads = set(previous.damaged_pads)
+        candidate.floating_mode = previous.floating_mode
         candidate.observe()
         self.machine = candidate
+        self._pace = None
         self._dispose(previous)
 
+    def _reset(self, running):
+        self.machine.pause_clock()
+        self._replace(self._new_machine(self.machine.hex_text))
+        self.debugger.attach(self.machine)
+        self.status = 'running' if running else ('ready' if self.loaded else 'empty')
+        if running:
+            self.machine.resume_clock()
+            self.wake.set()
+        else:
+            self.wake.clear()
+
     def load(self, text, name='Uploaded HEX', diagnostics='HEX loaded and validated.', *, elf: bytes = b''):
-        candidate = Machine(text, realtime=self.realtime) # validation is atomic
+        candidate = self._new_machine(text) # validation is atomic
         try:
             debugger = Debugger(candidate, elf)
         except Exception:
@@ -134,6 +207,7 @@ class Runtime:
                     raise ValueError('Reset the firmware after a runtime error.')
                 self.debugger.resume()
                 self.status = 'running'
+                self._pace = None
                 self.machine.resume_clock()
                 self.wake.set()
             elif action == 'pause':
@@ -143,16 +217,8 @@ class Runtime:
                 self.wake.clear()
             elif action in ('stop','reset'):
                 running = self.status == 'running' and action == 'reset'
-                self.machine.pause_clock()
-                self._replace(Machine(self.machine.hex_text, realtime=self.realtime))
-                self.debugger.attach(self.machine)
-                self.status = 'running' if running else ('ready' if self.loaded else 'empty')
+                self._reset(running)
                 self.diagnostics = 'MCU reset. Ribbon cables, patch wires and jumper settings retained.'
-                if running:
-                    self.machine.resume_clock()
-                    self.wake.set()
-                else:
-                    self.wake.clear()
             else:
                 raise ValueError('Unknown runtime control.')
             return self.snapshot()
@@ -191,7 +257,7 @@ class Runtime:
                     self.debugger.stop_reason = 'step'
                 except FirmwareError as e:
                     self.status = 'error'
-                    self.diagnostics = str(e)
+                    self.diagnostics = self._explain(str(e))
                     self.debugger.stop_reason = 'error'
                     raise
                 finally:
@@ -246,10 +312,147 @@ class Runtime:
             elif action == 'release-inputs':
                 b.sw2 = False
                 b.keys.clear()
+                for part in b.circuit.parts.values():
+                    if part.kind in ('button', 'keypad') and any(part.stimuli.values()):
+                        part.stimuli = {k: (-1 if part.kind == 'keypad' else 0) for k in part.stimuli}
+                        b.circuit.touch()
             else:
                 raise ValueError('Unknown physical input action.')
             self.machine.observe()
             return self.snapshot()
+
+    # -- external circuit ---------------------------------------------------------------
+    def circuit(self, data):
+        with self.lock:
+            circuit = self.machine.board.circuit
+            action = data.get('action')
+            info = None
+            if action == 'add':
+                part = circuit.add_part(data.get('type'), data.get('id'), data.get('props'),
+                                        data.get('placement'), data.get('mount'))
+                info = {'id': part.id}
+            elif action == 'remove':
+                circuit.remove_part(data.get('id'))
+            elif action == 'move':
+                circuit.move(data.get('id'), data.get('placement'), data.get('mount'))
+            elif action == 'props':
+                circuit.set_props(data.get('id'), data.get('props'))
+            elif action == 'stimulus':
+                circuit.set_stimulus(data.get('id'), data.get('name'), data.get('value'))
+            elif action == 'connect':
+                circuit.connect(data.get('a'), data.get('b'), data.get('color', '#d33'))
+            elif action == 'disconnect':
+                circuit.disconnect(data.get('a'), data.get('b'))
+            elif action == 'clear':
+                circuit.clear()
+            elif action == 'load':
+                project = data.get('project') or {}
+                if project.get('target', self.target) != self.target:
+                    self._set_target(project['target'])
+                    circuit = self.machine.board.circuit
+                circuit.load(project)
+            elif action == 'apply':
+                circuit.apply(data.get('patch'))
+            elif action == 'inspect':
+                info = circuit.endpoint_info(data.get('endpoint'))
+                if info is None:
+                    raise ValueError('Unknown endpoint.')
+            elif action == 'probes':
+                circuit.set_probes(data.get('endpoints'))
+            elif action == 'damage-mode':
+                if data.get('mode') not in ('realistic', 'warn'):
+                    raise ValueError("Damage mode must be 'realistic' or 'warn'.")
+                circuit.damage_mode = data['mode']
+            else:
+                raise ValueError('Unknown circuit action.')
+            self.machine.observe()
+            state = self.snapshot()
+            return {'state': state, 'info': info} if info is not None else state
+
+    def export_project(self):
+        with self.lock:
+            return self.machine.board.circuit.export()
+
+    # -- serial terminals ---------------------------------------------------------------
+    def serial(self, data):
+        with self.lock:
+            action, key = data.get('action'), str(data.get('terminal', '0'))
+            terminal, part = self._terminal(key)
+            if action == 'send':
+                text = data.get('text')
+                if not isinstance(text, str) or len(text) > 4096:
+                    raise ValueError('Serial text must be at most 4096 characters.')
+                payload = text.encode('latin-1', 'replace')
+                if part is not None:
+                    part.uart_send(payload)
+                else:
+                    uart = self.machine.uarts[terminal.uart]
+                    if uart.pad('RXD') is None:
+                        raise ValueError(f'UART{terminal.uart} has no RXD pin selected in PINSEL; '
+                                         'the firmware cannot receive.')
+                    terminal.send(self.machine, payload,
+                                  lambda b: uart.receive(b, terminal.baud, sender='PC terminal'))
+            elif action == 'baud':
+                baud = data.get('baud')
+                if baud not in (1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200):
+                    raise ValueError('Unsupported terminal baud rate.')
+                if part is not None:
+                    part.configure({'baud': baud})
+                else:
+                    terminal.baud = baud
+            elif action == 'clear':
+                terminal.clear()
+            else:
+                raise ValueError('Unknown serial action.')
+            return self.snapshot()
+
+    def _terminal(self, key):
+        if key.isdigit() and int(key) in self.terminals:
+            return self.terminals[int(key)], None
+        part = self.machine.board.circuit.parts.get(key)
+        if part is None or not hasattr(part, 'terminal'):
+            raise ValueError('Unknown serial terminal.')
+        return part.terminal, part
+
+    # -- settings ---------------------------------------------------------------------------
+    def settings(self, data):
+        with self.lock:
+            if 'target' in data:
+                if data['target'] not in TARGETS:
+                    raise ValueError(f'Target must be one of {", ".join(TARGETS)}.')
+                if data['target'] != self.target:
+                    self._set_target(data['target'])
+            if 'timing' in data:
+                if data['timing'] not in TIMING_MODES:
+                    raise ValueError("Timing must be 'realtime' or 'precise'.")
+                if data['timing'] != self.timing:
+                    self.timing = data['timing']
+                    self.realtime = self.live and self.timing == 'realtime'
+                    running = self.status == 'running'
+                    self._reset(running)
+                    self.diagnostics = ('Precise timing: every peripheral runs on instruction-derived time, '
+                                        'throttled to real time when the host is fast enough.'
+                                        if self.timing == 'precise' else 'Real-time timing restored.')
+            if 'floating' in data:
+                if data['floating'] not in ('low', 'random'):
+                    raise ValueError("Floating inputs must be 'low' or 'random'.")
+                self.machine.floating_mode = data['floating']
+            return self.snapshot()
+
+    def _set_target(self, target):
+        running = self.status == 'running'
+        self.machine.pause_clock()
+        self.target = target
+        candidate = self._new_machine(self.machine.hex_text)
+        self._replace(candidate)
+        self.debugger.attach(self.machine)
+        self.status = 'running' if running else ('ready' if self.loaded else 'empty')
+        if running:
+            self.machine.resume_clock()
+            self.wake.set()
+        self.diagnostics = {'als': 'Target: ALS-SDA-ARMCTXM3-01 evaluation kit.',
+                            'mbed': 'Target: mbed LPC1768 module (DIP-40, pins p5–p30).',
+                            'bare': 'Target: bare LPC1768 (all LQFP100 pads).'}[target]
 
     def check(self, exercise):
         spec = next((e for e in CATALOG if e['id'] == exercise),None)
@@ -283,4 +486,6 @@ class Runtime:
     def snapshot(self):
         with self.lock:
             return {**self.machine.snapshot(),'status':self.status,'loaded':self.loaded,
-                    'firmwareName':self.name,'diagnostics':self.diagnostics}
+                    'firmwareName':self.name,'diagnostics':self.diagnostics,
+                    'timing': self.timing, 'speed': round(self.speed, 3),
+                    'floating': self.machine.floating_mode}

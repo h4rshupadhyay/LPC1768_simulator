@@ -1,0 +1,2 @@
+class FirmwareError(ValueError):
+    pass

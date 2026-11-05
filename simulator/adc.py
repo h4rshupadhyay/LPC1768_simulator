@@ -1,11 +1,15 @@
-"""LPC1768 ADC subset, from UM10360 chapter 29 and datasheet Fig.28.
+"""LPC1768 ADC, from UM10360 chapter 29 and datasheet Fig.28.
 
+All eight channels sample their real pads (AD0.0-AD0.7). On the ALS kit AD0.4
+and AD0.5 carry POT4/POT1; elsewhere a channel reads the solved circuit voltage.
 Analog accuracy is idealized. Inputs disconnected by PINSEL or JP18 resolve
 to zero by simulator convention, not by an assertion about floating hardware.
 """
 from __future__ import annotations
 
 import math
+
+from . import pins
 
 
 class ADCPeripheral:
@@ -56,19 +60,28 @@ class ADCPeripheral:
 
     def _begin(self, channel):
         m = self.machine
-        if channel not in (4, 5):
-            m._fail(f'Unsupported ADC channel {channel}; only AD0.4 and AD0.5 are wired.')
-            return
         self.channel = channel
         self.period = self._period()
         self.remaining = self.period
         self.conversion_burst = self._burst()
-        valid = m.function(1, 26 + channel) == 3 and (
-            channel != 4 or m.board.jumpers['JP18'] == '2-3')
-        voltage = m.board.pots[channel] if valid else 0.0
+        voltage = self.input_voltage(channel)
         # Fig.28 places the first ideal transition at half an LSB and defines
         # 1 LSB=(VREFP-VREFN)/4096. Equality uses the upper code by convention.
         self.sample = min(4095, max(0, math.floor(voltage * 4096 / 3.3 + 0.5)))
+
+    def input_voltage(self, channel):
+        """Sampled pad voltage: kit POT1/POT4 on the ALS board, else the solved net voltage."""
+        m = self.machine
+        port, pin, function = pins.ADC_PADS[channel]
+        if m.function(port, pin) != function:
+            return 0.0
+        if m.board.target == 'als' and channel in (4, 5):
+            return m.board.pots[channel] if channel != 4 or m.board.jumpers['JP18'] == '2-3' else 0.0
+        voltage = m.board.pad_voltage(port, pin)
+        if voltage is None:
+            # Floating input: zero by convention, or noise in the realistic mode.
+            return 3.3 * m.rng.random() if m.floating_mode == 'random' else 0.0
+        return voltage
 
     def _complete(self):
         m = self.machine

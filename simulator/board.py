@@ -1,4 +1,9 @@
-"""Ten-conductor ribbons and single-contact patch wires, derived from the ALS manual."""
+"""Ten-conductor ribbons and single-contact patch wires, derived from the ALS manual.
+
+The board also hosts the external circuit (simulator/circuit.py). Nets that
+contain a part pin or a supply rail are solved for voltages; all other nets keep
+the ideal digital resolution below, unchanged.
+"""
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,9 +31,16 @@ class _Net:
     ports: list[tuple[int, int]]
 
 
+TARGETS = ('als', 'mbed', 'bare')
+VIH, VIL = 0.7 * 3.3, 0.3 * 3.3
+
+
 class Board:
-    def __init__(self, machine):
+    def __init__(self, machine, target='als'):
+        if target not in TARGETS:
+            raise ValueError(f'Target must be one of {", ".join(TARGETS)}.')
         self.machine = machine
+        self.target = target
         self.cables = []
         # Single-conductor patch wires between individual header pins.
         self.wires = []
@@ -48,6 +60,13 @@ class Board:
         self._port_masks = [0] * 5
         self._port_values = [0] * 5
         self._floating = set()
+        self._floating_masks = [0] * 5
+        self._node_net = {}
+        self._analog = []
+        self._levels = {}
+        self._volts = {}
+        from .circuit import Circuit
+        self.circuit = Circuit(self)
 
     def connect(self, a, b):
         if not isinstance(a,str) or not isinstance(b,str) or a not in MAPPING['headers'] or b not in MAPPING['headers'] or a == b:
@@ -138,7 +157,8 @@ class Board:
 
     def groups(self):
         key = (tuple(map(tuple, self.cables)), tuple(map(tuple, self.wires)),
-               tuple(self.jumpers.values()), tuple(sorted(self.keys)), self.sw2_pin)
+               tuple(self.jumpers.values()), tuple(sorted(self.keys)), self.sw2_pin,
+               self.target, self.circuit.version)
         if key == self._graph_key:
             return self._groups
         parents = {}
@@ -157,6 +177,16 @@ class Board:
             # Same pin resolution as ribbons: jumpers, SW2 profile and NC
             # (None) apply. A wire to an NC pin joins nothing.
             union(self._pin(*self.endpoint(a)), self._pin(*self.endpoint(b)))
+        if self.target == 'mbed':
+            # The module's LED1-LED4 hang off P1.18/P1.20/P1.21/P1.23 permanently.
+            from .circuit import MBED_LEDS
+            for led, pad in MBED_LEDS.items():
+                union(led, pad)
+        if self.circuit.active:
+            for node in self.circuit.nodes():
+                find(node)
+            for a, b in self.circuit.connections():
+                union(a, b)
         for k in self.keys:
             # ESD schematic PDF p42: D6-D9 isolate the four ROW connector
             # terminals from the switch buses. They are row diodes, not
@@ -186,17 +216,37 @@ class Board:
             self._nets.append(_Net(nodes, pins, 'GND' in nodes, 'SW2' in nodes,
                                    any(n.startswith('COL') for n in nodes),
                                    any(n.startswith('DIG') for n in nodes), level_nodes, list(port_masks.items())))
+        self._node_net = node_net
+        part_ids = set(self.circuit.parts)
+        self._analog = [index for index, net in enumerate(self._nets)
+                        if any(n in ('3V3', '5V') or n.split('.')[0] in part_ids for n in net.nodes)]
         self._diodes = [(node_net[f'ROW{r}'], node_net[f'MATRIX_ROW{r}']) for r in range(4)
                         if f'ROW{r}' in node_net and f'MATRIX_ROW{r}' in node_net]
         self._connection_warnings = [f'{a} ↔ {b}: two {MAPPING["headers"][a]["kind"]} headers; check pin compatibility.'
                                      for a, b in self.cables
                                      if MAPPING['headers'][a]['kind'] == MAPPING['headers'][b]['kind']]
+        # A routed contact patched to an NC contact (or an open jumper route) loses
+        # its signal. NC-to-NC wires, as in a ribbon-equivalent harness, are harmless.
+        for a, b in self.wires:
+            ends = [end for end in (a, b) if self._pin(*self.endpoint(end)) is None]
+            if len(ends) == 1:
+                self._connection_warnings.append(
+                    f'{ends[0]}: not connected on the board; the wire {a} ↔ {b} carries nothing.')
         self._graph_key = key
         return self._groups
 
     def signals(self):
         levels = {}
         self.groups()
+        solved = {}
+        if self._analog:
+            # Parts react to the operating point (clock edges, triggers); re-solve
+            # until their outputs settle.
+            for _ in range(6):
+                before = tuple(part.signature() for part in self.circuit.parts.values())
+                solved = self.circuit.solve_nets(self._nets, self._analog)
+                if before == tuple(part.signature() for part in self.circuit.parts.values()):
+                    break
         warnings = list(self._connection_warnings)
         conflicts = set()
         floating = set()
@@ -228,7 +278,23 @@ class Board:
                     if (min(drives[bus]) == 0 if drives[bus] else self._nets[bus].columns)}
         for row in low_rows:
             drives[row].append(0)
-        for net, strong in zip(self._nets, drives):
+        floating_masks = [0] * 5
+        volts = {}
+        for index, (net, strong) in enumerate(zip(self._nets, drives)):
+            if index in solved:
+                v, driven = solved[index]
+                level = int(v >= 1.65) if driven else 0
+                if not driven:
+                    floating.update(net.nodes)
+                    for port, mask in net.ports:
+                        floating_masks[port] |= mask
+                elif level:
+                    for port, mask in net.ports:
+                        self._port_values[port] |= mask
+                for n in net.nodes:
+                    levels[n] = level
+                    volts[n] = v
+                continue
             if 0 in strong and 1 in strong:
                 warnings.append('Conflicting driven levels on ' + ', '.join(net.nodes) + '; resolving LOW.')
                 conflicts.update(net.nodes)
@@ -245,6 +311,8 @@ class Board:
                 level = 0 if 0 in pulls else 1 if 1 in pulls else 0
                 if 0 not in pulls and 1 not in pulls:
                     floating.update(net.nodes)
+                    for port, mask in net.ports:
+                        floating_masks[port] |= mask
             if level:
                 for port, mask in net.ports:
                     self._port_values[port] |= mask
@@ -255,7 +323,77 @@ class Board:
         self.warnings = warnings
         self.conflicts = conflicts
         self._floating = floating
+        self._floating_masks = floating_masks
+        self._levels = levels
+        self._volts = volts
         return levels
+
+    # -- queries used by peripherals, parts and the Doctor ---------------------------
+    def net_of(self, node):
+        self.groups()
+        index = self._node_net.get(node)
+        return self._nets[index] if index is not None else None
+
+    def same_net(self, a, b):
+        self.groups()
+        index = self._node_net.get(a)
+        return index is not None and index == self._node_net.get(b)
+
+    def parts_on(self, node):
+        net = self.net_of(node)
+        if net is None:
+            return []
+        found = []
+        for member in net.nodes:
+            owner, _, pin = member.partition('.')
+            part = self.circuit.parts.get(owner)
+            if part is not None and pin:
+                found.append((part, pin))
+        return found
+
+    def node_level(self, node):
+        self.signals()
+        if node in self._levels:
+            return None if node in self._floating else self._levels[node]
+        pad = self._pad(node)
+        if pad:
+            out = self.machine.pin_output(*pad)
+            return out if out is not None else self.machine.pin_pull(*pad)
+        return None
+
+    def node_voltage(self, node):
+        self.signals()
+        if node in self._volts:
+            return self._volts[node]
+        level = self.node_level(node)
+        return None if level is None else 3.3 * level
+
+    def released_level(self, node):
+        """Does a released open-drain line on `node` rise to a valid HIGH?"""
+        self.signals()
+        if node in self._volts:
+            return node not in self._floating and self._volts[node] >= VIH
+        net = self.net_of(node)
+        pads = [self._pad(n) for n in (net.nodes if net else [node])]
+        pulls = [self.machine.pin_pull(*p) for p in pads if p]
+        kit = net is not None and (net.switch or net.digits)
+        return kit or (1 in pulls and 0 not in pulls)
+
+    def pad_voltage(self, port, pin):
+        return self.node_voltage(f'P{port}.{pin}')
+
+    def floating_mask(self, port):
+        return self._floating_masks[port]
+
+    @staticmethod
+    def _pad(node):
+        if node.startswith('P') and '.' in node and node[1:2].isdigit():
+            port, pin = node[1:].split('.')
+            return int(port), int(pin)
+        return None
+
+    def circuit_snapshot(self):
+        return self.circuit.snapshot()
 
     def sampled_gpio(self, port):
         """Resolved external pads as bit masks, using fresh dynamic signals."""

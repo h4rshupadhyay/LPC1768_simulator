@@ -1,0 +1,61 @@
+[
+ {"id":"uart_hello","title":"UART hello & echo","file":"uart_hello.c","timing":"realtime",
+  "description":"printf-style output to the Serial tab and an echo of what you type. No external parts.",
+  "project":{"target":"mbed","parts":[],"wires":[]}},
+ {"id":"ultrasonic","title":"HC-SR04 distance with a safe divider","file":"ultrasonic.c","timing":"realtime",
+  "description":"5 V ultrasonic sensor; ECHO goes through 10 kΩ/18 kΩ to a 3.3 V pin. Move the distance slider in the Inspector.",
+  "project":{"target":"mbed","parts":[
+   {"id":"sonar","type":"hcsr04","props":{},"stimuli":{"distance_cm":42},"placement":{"x":30,"z":-40,"rot":0},"mount":{}},
+   {"id":"rtop","type":"resistor","props":{"ohms":10000},"placement":{"x":30,"z":10,"rot":0},"mount":{}},
+   {"id":"rbot","type":"resistor","props":{"ohms":18000},"placement":{"x":30,"z":30,"rot":0},"mount":{}}],
+   "wires":[["mbed.VU","sonar.VCC","#e53935"],["mbed.GND","sonar.GND","#212121"],["mbed.p5","sonar.TRIG","#fb8c00"],
+    ["sonar.ECHO","rtop.1","#1e88e5"],["rtop.2","mbed.p8","#1e88e5"],["rtop.2","rbot.1","#1e88e5"],["rbot.2","mbed.GND","#212121"]]}},
+ {"id":"ultrasonic_unsafe","title":"Doctor demo: 5 V ECHO without a divider","file":"ultrasonic.c","timing":"realtime",
+  "description":"ECHO is wired straight to p8. The Circuit Doctor explains why 5 V is tolerated only while the pin is a digital input (never in ADC mode) and offers a one-click divider.",
+  "project":{"target":"mbed","parts":[
+   {"id":"sonar","type":"hcsr04","props":{},"stimuli":{"distance_cm":42},"placement":{"x":30,"z":-40,"rot":0},"mount":{}}],
+   "wires":[["mbed.VU","sonar.VCC","#e53935"],["mbed.GND","sonar.GND","#212121"],["mbed.p5","sonar.TRIG","#fb8c00"],
+    ["sonar.ECHO","mbed.p8","#1e88e5"]]}},
+ {"id":"bmp280","title":"BMP280 temperature & pressure (I2C)","file":"bmp280.c","timing":"realtime",
+  "description":"3.3 V-only sensor on I2C2 with 4.7 kΩ pull-ups. Change temperature/pressure in the Inspector.",
+  "project":{"target":"mbed","parts":[
+   {"id":"bmp","type":"bmp280","props":{"address":118},"stimuli":{"celsius":24.5,"hpa":1008},"placement":{"x":30,"z":-30,"rot":0},"mount":{}},
+   {"id":"pu1","type":"resistor","props":{"ohms":4700},"placement":{"x":30,"z":10,"rot":0},"mount":{}},
+   {"id":"pu2","type":"resistor","props":{"ohms":4700},"placement":{"x":30,"z":25,"rot":0},"mount":{}}],
+   "wires":[["mbed.VOUT","bmp.VCC","#e53935"],["mbed.GND","bmp.GND","#212121"],["mbed.p28","bmp.SDA","#1e88e5"],
+    ["mbed.p27","bmp.SCL","#fdd835"],["pu1.1","bmp.SDA","#1e88e5"],["pu1.2","mbed.VOUT","#e53935"],
+    ["pu2.1","bmp.SCL","#fdd835"],["pu2.2","mbed.VOUT","#e53935"]]}},
+ {"id":"bmp280_5v","title":"Doctor demo: BMP280 on 5 V","file":"bmp280.c","timing":"realtime",
+  "description":"The same sensor powered from VU (5 V). Its absolute maximum is 4.25 V: watch it get damaged, then apply the fix and replace it.",
+  "project":{"target":"mbed","parts":[
+   {"id":"bmp","type":"bmp280","props":{"address":118},"stimuli":{"celsius":24.5,"hpa":1008},"placement":{"x":30,"z":-30,"rot":0},"mount":{}},
+   {"id":"pu1","type":"resistor","props":{"ohms":4700},"placement":{"x":30,"z":10,"rot":0},"mount":{}},
+   {"id":"pu2","type":"resistor","props":{"ohms":4700},"placement":{"x":30,"z":25,"rot":0},"mount":{}}],
+   "wires":[["mbed.VU","bmp.VCC","#e53935"],["mbed.GND","bmp.GND","#212121"],["mbed.p28","bmp.SDA","#1e88e5"],
+    ["mbed.p27","bmp.SCL","#fdd835"],["pu1.1","bmp.SDA","#1e88e5"],["pu1.2","mbed.VOUT","#e53935"],
+    ["pu2.1","bmp.SCL","#fdd835"],["pu2.2","mbed.VOUT","#e53935"]]}},
+ {"id":"servo","title":"Servo sweep (PWM1.1)","file":"servo_sweep.c","timing":"realtime",
+  "description":"50 Hz PWM with 1–2 ms pulses on p26; the servo is powered from VU.",
+  "project":{"target":"mbed","parts":[
+   {"id":"servo1","type":"servo","props":{},"placement":{"x":40,"z":-10,"rot":0},"mount":{}}],
+   "wires":[["mbed.VU","servo1.VCC","#e53935"],["mbed.GND","servo1.GND","#212121"],["mbed.p26","servo1.SIG","#fb8c00"]]}},
+ {"id":"pot_dimmer","title":"Potentiometer dimmer (ADC → PWM)","file":"pot_dimmer.c","timing":"realtime",
+  "description":"Bare LPC1768: AD0.0 reads a potentiometer and sets an LED's PWM brightness.",
+  "project":{"target":"bare","parts":[
+   {"id":"pot1","type":"potentiometer","props":{"ohms":10000},"stimuli":{"position":0.3},"placement":{"x":30,"z":-30,"rot":0},"mount":{}},
+   {"id":"r1","type":"resistor","props":{"ohms":330},"placement":{"x":30,"z":10,"rot":0},"mount":{}},
+   {"id":"led1","type":"led","props":{"color":"red"},"placement":{"x":50,"z":10,"rot":0},"mount":{}}],
+   "wires":[["mcu.3V3","pot1.3","#e53935"],["mcu.GND","pot1.1","#212121"],["pot1.W","mcu.P0.23","#43a047"],
+    ["mcu.P2.0","r1.1","#fb8c00"],["r1.2","led1.A","#fb8c00"],["led1.K","mcu.GND","#212121"]]}},
+ {"id":"oled","title":"SSD1306 OLED graphics (I2C)","file":"oled_hello.c","timing":"realtime",
+  "description":"128×64 OLED on I2C2: initialization with the charge pump, then a frame, checkerboard and progress bar.",
+  "project":{"target":"mbed","parts":[
+   {"id":"oled1","type":"ssd1306","props":{"address":60},"placement":{"x":40,"z":-20,"rot":0},"mount":{}}],
+   "wires":[["mbed.VOUT","oled1.VCC","#e53935"],["mbed.GND","oled1.GND","#212121"],["mbed.p28","oled1.SDA","#1e88e5"],
+    ["mbed.p27","oled1.SCL","#fdd835"]]}},
+ {"id":"dht11","title":"DHT11 humidity (µs timing)","file":"dht11.c","timing":"precise",
+  "description":"Bit-banged single-wire protocol timed with Timer0. Uses the Precise timing mode.",
+  "project":{"target":"mbed","parts":[
+   {"id":"dht1","type":"dht","props":{"model":"DHT11","pullup":true},"stimuli":{"celsius":27,"humidity":61},"placement":{"x":40,"z":-20,"rot":0},"mount":{}}],
+   "wires":[["mbed.VOUT","dht1.VCC","#e53935"],["mbed.GND","dht1.GND","#212121"],["mbed.p5","dht1.DATA","#43a047"]]}}
+]

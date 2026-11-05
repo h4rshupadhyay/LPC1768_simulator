@@ -100,3 +100,39 @@ uses Python and Unicorn and can be ported independently.
 * [Renode source/platforms](https://github.com/renode/renode)
 * [Unicorn Python MMIO implementation](https://github.com/unicorn-engine/unicorn/blob/master/bindings/python/unicorn/unicorn_py3/unicorn.py)
 * [Wokwi Elements presentation scope](https://github.com/wokwi/wokwi-elements)
+
+# ADR 002 — Open Workbench: external circuits, full peripheral set, 3D bench
+
+Status: implemented on branch `worktree-open-workbench` (plan:
+[2026-11-04-open-workbench](superpowers/plans/2026-11-04-open-workbench.md)).
+
+## Layers added
+
+* **Peripheral bus** (`simulator/peripheral.py`): UART0–3 (`uart.py`), SSP0/1 and legacy
+  SPI (`ssp.py`), I2C0–2 master (`i2c.py`), DAC (`dac.py`), RIT/WDT/RTC/QEI and stored MCPWM
+  registers (`clocks.py`) register windows on the machine. Unknown offsets still stop the
+  program with an address and region name.
+* **Pin functions** (`pins.py`): the full PINSEL table and pad electrical classes. Pads drive
+  PWM1.1–1.6 and timer MATn outputs on any selected pin; capture inputs, counter mode, EINT0–3
+  from any source and port 0/2 GPIO interrupts react to pad edges.
+* **Core**: nested, prioritized NVIC (IP/SHPR, PRIGROUP), PendSV, SVC, IRQ32+, AIRCR reset,
+  STIR, DWT CYCCNT, bit-band aliases, unmapped-access BusFault messages, PLL feed/limit notes.
+* **Scheduler and time**: devices schedule events in simulated nanoseconds; live mode
+  interleaves them with timer advance at their exact instant, offline/Precise mode derives
+  time from instruction ticks. Precise timing throttles virtual time to the wall clock.
+* **Circuit** (`circuit.py`, `solver.py`, `doctor.py`, `parts/`): targets (ALS kit, mbed
+  module, bare chip), endpoint naming, breadboards, wires, mounts; DC nodal analysis of every
+  net that contains a part or rail; Circuit Doctor findings, damage and fix patches.
+  Nets without parts use the original digital resolution, so lab behavior is unchanged.
+* **Frontend**: `web/workbench/` (three.js via @react-three/fiber/drei, lazy-loaded): 3D
+  bench, catalogue search, inspector, Doctor, serial monitor and logic analyzer;
+  `web/DebugPanel.tsx` exposes the existing debugger and printf console in the IDE.
+
+## Trade-offs
+
+Buses are transaction level rather than bit level: firmware sees correct register behavior
+and timing per byte, and parts exchange whole frames. This keeps Python MMIO overhead bounded
+while still teaching pin muxing, baud rates and pull-ups. Bit-banged protocols use timed edges
+and need Precise timing for instruction-accurate delays. The solver is DC only; parts expose
+simplified transfer functions with data-sheet ratings so that the Doctor can reason with
+real numbers.

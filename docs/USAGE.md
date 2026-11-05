@@ -1,7 +1,8 @@
 # Usage and wiring guide
 
-A local, firmware-driven simulator of the ALS-SDA-ARMCTXM3-01 board. **Keil
-compiles the C; Unicorn executes real Cortex-M3 instructions.** Manual 10-pin
+A local, firmware-driven simulator of the ALS-SDA-ARMCTXM3-01 board. **A bundled
+Zig/LLVM toolchain compiles the C (Keil, Clang or Arm GCC can be selected instead);
+Unicorn executes real Cortex-M3 instructions.** Manual 10-pin
 ribbon cables and jumper positions determine which signals reach the board.
 There are no source-driven animations or exercise-specific simulation handlers.
 
@@ -38,13 +39,12 @@ No accounts or cloud services are needed.
 First-run prerequisites: Python 3.10+ and Node.js 20.19+ (or Node 22.12+).
 The launcher installs dependencies into `.venv`, builds the frontend if absent,
 and logs the service to `build/server.log`.
-C compilation uses the installed **Keil ARM Compiler 5**, local LPC17xx CMSIS,
-`system_LPC17xx.c` and startup assembly under `C:\Keil\ARM`. To use a different
-installation, set `KEIL_ARM_ROOT` to its `ARM` directory before starting.
-The detected compiler is **5.03 build 24, MDK-ARM Lite** (32 KB linker limit).
+C compilation uses the bundled **Zig/LLVM** toolchain with the project's own
+`toolchain/LPC17xx.h` (CMSIS-compatible names for every LPC1768 peripheral),
+startup code and newlib. Set `LPC_COMPILER=keil` (with `KEIL_ARM_ROOT`), `clang`
+or `gcc` to use another installed compiler; see [native runtime setup](NATIVE_RUNTIME.md).
 No Keil binaries or headers are redistributed in this project. HEX upload works
-independently of the compiler. Arm Compiler 6 and GCC compilation adapters are
-not implemented.
+independently of the compiler.
 
 ## Workspace screens
 
