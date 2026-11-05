@@ -1,5 +1,5 @@
-/* BMP280 over I2C2 on the mbed module: SDA = p28 (P0.10), SCL = p27 (P0.11),
- * 4.7 kOhm pull-ups to VOUT (3.3 V). Prints chip ID, temperature and pressure on UART0.
+/* BMP280 over I2C2 on the ALS kit: SDA = CNA.7 (P0.10), SCL = CNA.8 (P0.11),
+ * 4.7 kOhm pull-ups to the kit's 3V3 tap. Prints chip ID, temperature and pressure on UART0.
  */
 #include <LPC17xx.h>
 #include <stdint.h>

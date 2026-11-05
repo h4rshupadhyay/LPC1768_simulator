@@ -44,11 +44,10 @@ test('3D bench renders the kit and placed parts', async ({page, request}) => {
 });
 
 test('Circuit Doctor explains a 5 V supply on a 3.3 V sensor and applies the fix', async ({page, request}) => {
- await request.post('/api/settings', {data:{target:'mbed'}});
  for (const step of [
   {action:'add', type:'bmp280', id:'bmp', placement:{x:30, z:-30, rot:0}},
-  {action:'connect', a:'mbed.VU', b:'bmp.VCC'},
-  {action:'connect', a:'mbed.GND', b:'bmp.GND'}]) await request.post('/api/circuit', {data:step});
+  {action:'connect', a:'kit.5V', b:'bmp.VCC'},
+  {action:'connect', a:'kit.GND', b:'bmp.GND'}]) await request.post('/api/circuit', {data:step});
  await page.goto('/#bench');
  const finding = page.locator('.finding', {hasText:'supply is 5.0 V'});
  await expect(finding).toBeVisible();
@@ -56,7 +55,35 @@ test('Circuit Doctor explains a 5 V supply on a 3.3 V sensor and applies the fix
  await finding.getByRole('button', {name:'Apply fix'}).first().click();
  await expect(page.locator('.finding', {hasText:'supply is 5.0 V'})).toHaveCount(0);
  const state = await (await request.get('/api/state')).json();
- expect(state.circuit.wires.some((w:string[]) => w.includes('mbed.VOUT') && w.includes('bmp.VCC'))).toBe(true);
+ expect(state.circuit.wires.some((w:string[]) => w.includes('kit.3V3') && w.includes('bmp.VCC'))).toBe(true);
+});
+
+test('the kit stays on the bench and examples wire to its headers without errors', async ({page, request}) => {
+ const errors:string[] = [];
+ page.on('pageerror', e => errors.push(e.message));
+ await request.post('/api/settings', {data:{target:'mbed'}});   // an older session may have left another board
+ await page.goto('/#bench');
+ await expect.poll(async () => (await (await request.get('/api/state')).json()).target).toBe('als');
+ await page.getByLabel('Load a bench example').selectOption('servo');
+ await expect(page.getByText(/circuit wired and firmware compiled/)).toBeVisible({timeout:30000});
+ const state = await (await request.get('/api/state')).json();
+ expect(state.target).toBe('als');
+ expect(state.circuit.wires.some((w:string[]) => w.includes('kit.CND.7'))).toBe(true);
+ expect(errors).toEqual([]);
+});
+
+test('camera sliders rotate, tilt, zoom and pan the bench', async ({page}) => {
+ await page.goto('/#bench');
+ const panel = page.getByRole('group', {name:'3D view controls'});
+ const rotate = panel.getByLabel('Rotate', {exact:true});
+ await rotate.fill('90');
+ await expect(panel.locator('output').first()).toHaveText('90°');
+ await panel.getByLabel('Tilt').fill('30');
+ await panel.getByLabel('Zoom').fill('700');
+ await panel.getByLabel('Pan ←→').fill('-150');
+ await panel.getByRole('button', {name:'Kit'}).click();
+ await expect(panel.locator('output').first()).toHaveText('0°');
+ await expect(panel.getByLabel('Pan ←→')).toHaveValue('-156');
 });
 
 test('serial monitor shows UART output from a bench example', async ({page}) => {

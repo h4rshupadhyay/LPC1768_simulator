@@ -26,7 +26,7 @@
 .compat-warn{color:var(--warning)}
 .bench-stage{position:relative;min-width:0;min-height:0}
 .bench-canvas{position:absolute!important;inset:0}
-.bench-hud{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
+.bench-hud{position:absolute;left:8px;right:250px;bottom:8px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:none}
 .bench-hud>span{pointer-events:auto;background:#0d131ad9;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px}
 .bench-hud kbd{border:1px solid var(--border);border-radius:3px;padding:0 4px;font-size:11px}
 .bench-probe{font-family:Consolas,monospace}
@@ -84,3 +84,14 @@
 .logic-row figcaption span{color:var(--text-muted);flex:1}
 .logic-row figcaption button{min-height:18px;padding:0 6px}
 .logic-row svg{width:100%;height:34px;display:block}
+/* Hidden source of the kit artwork texture: in the DOM so it can be serialized, never shown. */
+.bench-artwork-source{position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none}
+.camera-panel{position:absolute;bottom:8px;right:8px;width:230px;background:#0d131ae6;border:1px solid var(--border);border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;gap:5px;font-size:12px;z-index:2}
+.camera-panel.collapsed{width:auto}
+.camera-toggle{align-self:flex-start;border:0;background:transparent;padding:0 2px;min-height:20px;color:var(--text-secondary)}
+.camera-presets{display:flex;flex-wrap:wrap;gap:3px}
+.camera-presets button{padding:2px 7px;min-height:22px;font-size:11px}
+.camera-row{display:grid;grid-template-columns:56px 1fr 52px;align-items:center;gap:6px;color:var(--text-secondary)}
+.camera-row input{width:100%;accent-color:var(--accent)}
+.camera-row output{font:11px Consolas,monospace;text-align:right;color:var(--text)}
+@media (max-width:700px){.camera-panel{width:200px}}

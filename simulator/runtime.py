@@ -350,7 +350,18 @@ class Runtime:
                 if project.get('target', self.target) != self.target:
                     self._set_target(project['target'])
                     circuit = self.machine.board.circuit
+                # Jumper wires cannot share a header with a ribbon: unplug the ribbons
+                # on headers the project wires, and say so.
+                board = self.machine.board
+                headers = {end.split('.')[1] for wire in project.get('wires', []) if isinstance(wire, list)
+                           for end in wire[:2] if isinstance(end, str) and end.startswith('kit.CN')}
+                unplugged = [cable for cable in board.cables if headers & set(cable)]
+                for cable in unplugged:
+                    board.disconnect(cable[0])
                 circuit.load(project)
+                if unplugged:
+                    self.diagnostics = ('Unplugged ' + ', '.join(f'{a} ↔ {b}' for a, b in unplugged)
+                                        + ' so jumper wires can use those header pins.')
             elif action == 'apply':
                 circuit.apply(data.get('patch'))
             elif action == 'inspect':

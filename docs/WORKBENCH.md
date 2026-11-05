@@ -3,16 +3,29 @@
 The **Workbench** screen (`#bench`) is a 3D bench for building circuits around an
 LPC1768. The exam-practice **Board** screen is unchanged and stays the default.
 
-## Targets
+## The kit is the main board
 
-| Target | What you wire to | Notes |
+The ALS LPC1768 kit is always on the bench; every project builds around it. External
+parts connect to the kit with jumper wires:
+
+| Kit connection | Endpoint | Notes |
 |---|---|---|
-| ALS kit | `kit.CNA.1` … `kit.CNAD.10` header pins, `kit.3V3`, `kit.5V`, `kit.GND` | Header pins carry the manual's MCU mapping (e.g. `CND.1` = P0.23). The power tap next to CN8 is an assumed tap; check your board before relying on it. A header holding a ribbon cannot take jumper wires. |
-| mbed LPC1768 | `mbed.p5` … `mbed.p30`, `VOUT` (3.3 V), `VU` (5 V USB), `GND` | Pin map from the mbed handbook. LED1–LED4 are on P1.18/P1.20/P1.21/P1.23. UART0 is the USB serial port. |
-| Bare LPC1768 | `mcu.P0.0` … `mcu.P4.29`, `mcu.3V3`, `mcu.GND` | Every LQFP100 pad, full PINSEL table. P0.27/P0.28 are true open-drain I2C pads here. |
+| Header pins | `kit.CNA.1` … `kit.CNAD.10` | Same MCU mapping as the manual, e.g. CNA.3 = P0.6, CNA.6 = P0.9, CNA.7/CNA.8 = P0.10/P0.11 (I2C2), CND.1 = P0.23 (AD0.0), CND.7 = P2.0 (PWM1.1). |
+| Power tap | `kit.3V3`, `kit.5V`, `kit.GND` | Shown next to the CN8 power section. Its position is an assumption; check your board. Any number of wires may share it. |
 
-Switching target restarts the MCU with the same firmware; the bench is cleared
-because endpoints differ between targets.
+A header that holds a ribbon cable cannot take jumper wires at the same time. Loading
+an example unplugs only the ribbons on headers it needs, and says which.
+
+The simulator core also models an mbed LPC1768 module (`mbed.p5` … `mbed.p30`,
+`VOUT`, `VU`, `GND`) and a bare chip (`mcu.P0.0` …), reachable through the
+`/api/settings` target option; the Workbench screen itself always returns to the kit.
+
+## 3D view controls
+
+Drag to orbit, scroll to zoom, right-drag to pan, or use the **View** panel in the
+corner: sliders for **Rotate**, **Tilt**, **Zoom** and **Pan** (left/right, forward/back),
+and presets **Bench** (kit and parts), **Kit**, **Top**, **Front**, **Parts** and
+**Selected** (the selected part). Sliders and mouse stay in step.
 
 ## Building a circuit
 

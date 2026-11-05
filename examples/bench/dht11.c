@@ -1,4 +1,4 @@
-/* DHT11 humidity/temperature on the mbed module, DATA = p5 (P0.9) with the
+/* DHT11 humidity/temperature on the ALS kit, DATA = CNA.6 (P0.9) with the
  * module's pull-up. Timer0 times the 26-28 us / 70 us HIGH pulses.
  * Select "Precise (us)" timing on the Workbench for microsecond-accurate replies.
  */

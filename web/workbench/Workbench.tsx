@@ -3,7 +3,10 @@ import {api} from '../api';
 import type {Info,Layout,State} from '../types';
 import type {ViewState} from '../viewState';
 import type {CircuitState,EndpointInfo,Finding,PartSpec,PartState,Placement,Target,TerminalState} from './types';
-import {Scene,type Pick,type View} from './Scene';
+import {Scene,type Pick} from './Scene';
+import {CameraPanel} from './CameraPanel';
+import {PRESETS,createCameraStore} from './camera';
+import {BoardArtwork} from '../BoardArtwork';
 import {searchParts,type Filters} from './search';
 import {LogicAnalyzer} from './LogicAnalyzer';
 import {PITCH,holeIndex,partPins} from './geometry';
@@ -29,7 +32,12 @@ export function Workbench({info,layout,state,publish,control,runtimeControls,com
  const [selected,setSelected]=useState<string|null>(null);
  const [selectedWire,setSelectedWire]=useState<[string,string]|null>(null);
  const [hover,setHover]=useState<string|null>(null),[probe,setProbe]=useState<EndpointInfo|null>(null);
- const [view,setView]=useState<View>('iso');
+ const [camera]=useState(()=>createCameraStore(PRESETS.bench));
+ // The kit artwork is rendered into a hidden SVG here (DOM renderer) and serialized
+ // for the 3D board texture.
+ const artwork=useRef<SVGSVGElement>(null);
+ const [boardMarkup,setBoardMarkup]=useState<string|null>(null);
+ useEffect(()=>{if(artwork.current)setBoardMarkup(new XMLSerializer().serializeToString(artwork.current));},[]);
  const [panel,setPanel]=useState<'doctor'|'serial'|'inspect'|'logic'>('doctor');
  const [lastHover,setLastHover]=useState<string|null>(null);
  useEffect(()=>{if(hover)setLastHover(hover);},[hover]);
@@ -38,6 +46,8 @@ export function Workbench({info,layout,state,publish,control,runtimeControls,com
  const [detail,setDetail]=useState<PartSpec|null>(null);
  const history=useRef<unknown[]>([]),future=useRef<unknown[]>([]);
  const target=(state.target??'als') as Target;
+ // The ALS kit is the bench's main board: always bring it back.
+ useEffect(()=>{if(state.target&&state.target!=='als')void call('/api/settings',{target:'als'},false);},[state.target]);
  const circuit=state.circuit??{parts:[],wires:[],findings:[],damageMode:'realistic',version:0};
  const specMap=useMemo(()=>Object.fromEntries(specs.map(s=>[s.kind,s])),[specs]);
 
@@ -166,14 +176,9 @@ export function Workbench({info,layout,state,publish,control,runtimeControls,com
   <div className="bench-toolbar">
    <label>Example <select aria-label="Load a bench example" value="" onChange={e=>{void loadExample(e.target.value);}}>
     <option value="">Choose…</option>{examples.map(x=><option key={x.id} value={x.id} title={x.description}>{x.title}</option>)}</select></label>
-   <label>Target <select aria-label="Target board" value={target} onChange={e=>{void call('/api/settings',{target:e.target.value},false);}}>
-    <option value="als">ALS LPC1768 kit</option><option value="mbed">mbed LPC1768</option><option value="bare">Bare LPC1768</option></select></label>
    <label>Timing <select aria-label="Timing mode" value={state.timing??'realtime'} onChange={e=>{void call('/api/settings',{timing:e.target.value},false);}}>
     <option value="realtime">Real-time</option><option value="precise">Precise (µs)</option></select></label>
    {state.timing==='precise'&&<span className="bench-speed" title="Simulated time per wall-clock second">{Math.round((state.speed??1)*100)}% speed</span>}
-   <div className="bench-views" role="group" aria-label="Camera view">
-    {(['iso','top','front','board','focus'] as View[]).map(v=><button key={v} aria-pressed={view===v} onClick={()=>setView(v)}>{{iso:'3D',top:'Top',front:'Front',board:'Board',focus:'Focus'}[v]}</button>)}
-   </div>
    <div className="bench-colors" role="group" aria-label="Wire colour">{WIRE_COLORS.map(c=><button key={c} aria-label={`Wire colour ${c}`} aria-pressed={wireColor===c} style={{background:c}} onClick={()=>setWireColor(c)}/>)}</div>
    <button onClick={()=>void undo()} title="Undo (Ctrl+Z)">↶</button><button onClick={()=>void redo()} title="Redo (Ctrl+Y)">↷</button>
    <button onClick={()=>void saveProject()}>Save project</button>
@@ -203,10 +208,12 @@ export function Workbench({info,layout,state,publish,control,runtimeControls,com
    </aside>
    <div className="bench-stage">
     {specs.length>0&&<Scene target={target} layout={layout} state={state} specs={specMap} parts={circuit.parts} wires={circuit.wires}
-     view={view} selected={selected} highlight={highlight} pendingWire={pendingWire}
+     selected={selected} highlight={highlight} pendingWire={pendingWire} boardMarkup={boardMarkup} camera={camera}
      ghost={placing?{spec:placing.spec,placement:placing.placement}:null}
      onPin={onPin} onHover={setHover} onSelect={id=>{setSelected(id);setSelectedWire(null);if(id)setPanel('inspect');}}
-     onBench={onBench} onWire={(a,b)=>{setSelectedWire([a,b]);setSelected(null);}} onKit={onKit} onReset={()=>control('reset')} hoverInfo={hover}/>}
+     onBench={onBench} onWire={(a,b)=>{setSelectedWire([a,b]);setSelected(null);}} onKit={onKit} onReset={()=>control('reset')}/>}
+    <CameraPanel store={camera} focus={selectedPart?[selectedPart.placement.x??0,selectedPart.placement.z??0]:null}/>
+    <svg ref={artwork} className="bench-artwork-source" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 1040" width="2880" height="2080" aria-hidden="true"><BoardArtwork/></svg>
     <div className="bench-hud" aria-live="polite">
      {placing&&<span>Placing <b>{placing.spec.name}</b> — click to drop, <kbd>R</kbd> rotates, <kbd>Esc</kbd> cancels. Pins over breadboard holes plug in.</span>}
      {pendingWire&&<span>Wire from <b>{pendingWire}</b>: click another pin or hole. <kbd>Esc</kbd> cancels.</span>}

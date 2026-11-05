@@ -1,4 +1,4 @@
-/* SSD1306 128x64 OLED over I2C2 on the mbed module (SDA = p28, SCL = p27).
+/* SSD1306 128x64 OLED over I2C2 on the ALS kit (SDA = CNA.7, SCL = CNA.8).
  * Initializes the panel (including the charge pump) and draws a frame,
  * a checkerboard and a bar that grows over time.
  */

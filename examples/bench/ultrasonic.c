@@ -1,5 +1,5 @@
-/* HC-SR04 distance on the mbed module.
- * TRIG = p5 (P0.9), ECHO = p8 (P0.6) through a 10k/18k divider (5 V -> 3.2 V).
+/* HC-SR04 distance on the ALS kit, sensor powered from the kit's 5 V tap.
+ * TRIG = CNA.6 (P0.9), ECHO = CNA.3 (P0.6) through a 10k/18k divider (5 V -> 3.2 V).
  * Timer0 counts microseconds; the distance prints on UART0 (Serial tab, 9600 baud).
  */
 #include <LPC17xx.h>

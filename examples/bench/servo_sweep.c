@@ -1,5 +1,5 @@
-/* SG90 servo sweep on the mbed module: signal on p26 (P2.0 = PWM1.1),
- * servo powered from VU (5 V). 50 Hz frame, 1.0-2.0 ms pulses.
+/* SG90 servo sweep on the ALS kit: signal on CND.7 (P2.0 = PWM1.1),
+ * servo powered from the kit's 5 V tap. 50 Hz frame, 1.0-2.0 ms pulses.
  */
 #include <LPC17xx.h>
 

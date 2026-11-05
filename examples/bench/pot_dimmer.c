@@ -1,5 +1,5 @@
-/* Bare LPC1768: potentiometer on AD0.0 (P0.23) sets the brightness of an LED on
- * PWM1.1 (P2.0, 330 Ohm resistor). The ADC reading prints on UART0 (9600 baud).
+/* ALS kit: potentiometer on CND.1 (AD0.0, P0.23) sets the brightness of an LED on
+ * CND.7 (PWM1.1, P2.0, 330 Ohm resistor). The ADC reading prints on UART0 (9600 baud).
  */
 #include <LPC17xx.h>
 
