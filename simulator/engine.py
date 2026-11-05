@@ -73,6 +73,8 @@ class Machine:
         self.realtime = realtime
         self._clock_ns = clock_ns or time.perf_counter_ns
         self._clock_anchor = None
+        # Measured host cost of one emulated instruction, for sizing slices.
+        self._ns_per_instruction = 50.0
         self.elapsed_ns = 0
         self.virtual_ns = 0
         self._virtual_fraction = 0
@@ -1219,6 +1221,14 @@ class Machine:
             # Offline instruction budgets must not be shortened by host load.
             # The live Runtime supplies its own short responsiveness deadline.
             timeout_us = 100_000 if self.realtime else 0
+        if timeout_us:
+            # The deadline becomes an instruction budget sized from the measured
+            # speed. Unicorn's own timeout stops emulation from another thread;
+            # when it lands inside a peripheral callback the interrupted load or
+            # store runs again on resume (doubled UART bytes, corrupted I2C
+            # transfers), which a slow host makes frequent.
+            instructions = max(1, min(instructions, max(200, int(timeout_us * 1000 / self._ns_per_instruction))))
+        started = time.perf_counter_ns()
         try:
             if self._block_hook is None and not fast:
                 self._block_hook = self.uc.hook_add(UC_HOOK_BLOCK, self._block)
@@ -1234,7 +1244,7 @@ class Machine:
             live_irq = fast and self.realtime and self.active_irq is not None
             first_budget = max(1, instructions // 2) if live_irq else instructions
             self.uc.emu_start(pc | 1, self.FLASH_SIZE if until is None else until,
-                              count=first_budget, timeout=timeout_us)
+                              count=first_budget)
             remaining = instructions - first_budget
             if live_irq and self.active_irq is None and remaining and not self.error:
                 pc = self.uc.reg_read(UC_ARM_REG_PC)
@@ -1243,9 +1253,12 @@ class Machine:
                 self._defer_irq_stop = True
                 try:
                     self.uc.emu_start(pc | 1, self.FLASH_SIZE if until is None else until,
-                                      count=remaining, timeout=timeout_us)
+                                      count=remaining)
                 finally:
                     self._defer_irq_stop = False
+            if timeout_us:
+                cost = (time.perf_counter_ns() - started) / instructions
+                self._ns_per_instruction = .7 * self._ns_per_instruction + .3 * max(1.0, cost)
             if self._block_hook is None:
                 # This is a scheduling budget, not a cycle counter. A timeout
                 # or exception return may retire fewer instructions.
