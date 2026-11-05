@@ -7,6 +7,7 @@ Only the Keil adapter uses a user-installed proprietary SDK.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -67,13 +68,36 @@ def elf_to_hex(elf: bytes, *, allow_sram: bool = False) -> str:
     return output.getvalue()
 
 
+ASSEMBLER_FILE_DIRECTIVES = re.compile(
+    r"(?im)(?<![\w.$])\.(incbin|include|macro|irp|irpc|rept|altmacro|purgem)\b"
+)
+
+
+def check_assembly(text: str) -> None:
+    """Reject assembler input that could read files or build directives at expansion time."""
+    if match := ASSEMBLER_FILE_DIRECTIVES.search(text):
+        raise CompileError(
+            f'The assembler directive ".{match.group(1)}" is disabled on the public simulator.'
+        )
+
+
+def _minimal_env() -> dict:
+    keep = ("PATH", "HOME", "TMPDIR", "TEMP", "TMP", "SYSTEMROOT", "LOCALAPPDATA",
+            "ZIG_GLOBAL_CACHE_DIR", "ZIG_LOCAL_CACHE_DIR", "XDG_CACHE_HOME", "LANG")
+    return {k: os.environ[k] for k in keep if k in os.environ}
+
+
 class Compiler:
     def __init__(
-        self, keil_root: str | Path | None = None, *, optimization=0, backend=None
+        self, keil_root: str | Path | None = None, *, optimization=0, backend=None,
+        restricted=False,
     ):
         if type(optimization) is not int or optimization not in range(4):
             raise ValueError("Optimization must be an integer from 0 through 3.")
         self.optimization = optimization
+        # Restricted (public hosting): the compiler gets a minimal environment
+        # and the generated assembly is checked for directives that read files.
+        self.restricted = restricted
         self.root = Path(keil_root or os.environ.get("KEIL_ARM_ROOT", "C:/Keil/ARM"))
         self.bin = self.root / "ARMCC/bin"
         requested = backend or os.environ.get(
@@ -160,6 +184,8 @@ class Compiler:
             if language == "asm":
                 from .assembly import translate
                 (out / "main.s").write_text(translate(source), encoding="utf-8")
+                if self.restricted:
+                    check_assembly((out / "main.s").read_text(encoding="utf-8"))
             else:
                 (out / "main.c").write_text(source, encoding="utf-8")
             diagnostics = []
@@ -170,6 +196,7 @@ class Compiler:
                         list(map(str, command)),
                         check=False,
                         cwd=out,
+                        env=_minimal_env() if self.restricted else None,
                         capture_output=True,
                         text=True,
                         errors="replace",
@@ -220,6 +247,15 @@ class Compiler:
                 common = ["-target", "thumb-freestanding-eabi", *common]
             elif self.backend == "clang":
                 common = ["--target=arm-none-eabi", "-fuse-ld=lld", *common]
+            if self.restricted:
+                # Inline asm can spell file-reading directives through string
+                # escapes or concatenation. LLVM IR keeps inline asm as unparsed
+                # strings (clang's -S would already execute .incbin), so check
+                # those, with IR escapes such as \22 and \0A undone.
+                run([*self.command, *common, "-S", "-emit-llvm", "main.c", "-o", "main.ll"])
+                ir = (out / "main.ll").read_text(encoding="utf-8", errors="replace")
+                check_assembly(re.sub(r"\\([0-9A-Fa-f]{2})", lambda m: chr(int(m.group(1), 16)), ir))
+                diagnostics.clear()
             files = [
                 "main.c",
                 *(

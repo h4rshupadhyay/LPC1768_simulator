@@ -17,7 +17,7 @@ TIMING_MODES = ('realtime', 'precise')
 
 
 class Runtime:
-    def __init__(self, start_worker=True, *, realtime=None, target='als'):
+    def __init__(self, start_worker=True, *, realtime=None, target='als', restricted=False):
         self.lock = threading.RLock()
         self.wake = threading.Event()
         self.closed = threading.Event()
@@ -37,7 +37,7 @@ class Runtime:
         self.status = 'empty'
         self.name = 'No firmware loaded'
         self.diagnostics = 'Compile Embedded C or upload an Intel HEX file.'
-        self.compiler = Compiler()
+        self.compiler = Compiler(restricted=restricted)
         self.thread = None
         if start_worker:
             self.thread = threading.Thread(target=self._worker, name='lpc1768-cpu', daemon=True)
