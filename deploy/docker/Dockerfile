@@ -1,6 +1,6 @@
-# Hugging Face Space (Docker SDK) for the LPC1768 simulator, in public mode.
-# It builds the public GitHub repository, so the Space holds only this file and
-# README.md. Use "Factory rebuild" in the Space settings to pick up new commits.
+# Docker image of the LPC1768 simulator in public mode (frontend and API).
+# It builds the public GitHub repository, so it needs no build context. On a
+# Hugging Face Docker Space (PRO), use "Factory rebuild" to pick up new commits.
 
 FROM node:22-bookworm-slim AS web
 ARG REPO=https://github.com/KavyPings/LPC1768_simulator_extended.git

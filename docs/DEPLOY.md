@@ -3,15 +3,16 @@
 The simulator needs a long-running Python process: each visitor's emulated LPC1768 lives in
 memory with its own CPU thread, and the Zig/LLVM compiler alone is ~370 MB. Vercel serverless
 functions are stateless and limited to 250 MB, so Vercel hosts only the frontend and forwards
-`/api` to a backend hosted on a Hugging Face Space (free, Docker).
+`/api` to a backend hosted on a free Hugging Face Space.
 
 ```
 browser ──► Vercel (dist/, static) ──/api, /board, /assets/board.jpg──► Hugging Face Space
-                                                                         gunicorn + Flask
+                                                                         uvicorn: Gradio page + Flask API
                                                                          one Runtime per visitor
 ```
 
-The Space also serves the whole app by itself at `https://<space-host>`.
+Live: frontend https://lpc-1768-simulator-extended.vercel.app, backend Space
+https://huggingface.co/spaces/kavyyyyy/lpc1768-simulator (`https://kavyyyyy-lpc1768-simulator.hf.space`).
 
 ## Public mode
 
@@ -37,33 +38,37 @@ The Space holds no secrets: it builds the public GitHub repository.
 
 ## Hugging Face Space
 
-1. Create a Space at https://huggingface.co/new-space: SDK **Docker**, template **Blank**,
-   hardware **CPU basic (free)**, visibility **Public**.
-2. Add the two files from `deploy/huggingface/` (`Dockerfile`, `README.md`) to the Space
-   (Files → Add file → Create new file, or upload). The build clones this repository's `main`
-   branch, builds the frontend and starts gunicorn on port 7860.
-3. Wait for the status to become **Running**, then open `https://<space-host>` (shown under
-   ⋮ → Embed this Space → Direct URL, normally `https://<user>-<space-name>.hf.space`).
-4. After pushing new commits to `main`, use Settings → **Factory rebuild**.
+Free accounts get Gradio Spaces only (the Docker SDK and CPU Basic hardware need PRO), so the
+Space runs `deploy/huggingface/app.py`: one uvicorn server on port 7860 that sends `/api/*`,
+`/board/*` and `/assets/board.jpg` to the Flask simulator (through `a2wsgi`) and everything
+else to a small Gradio page linking to the frontend. No GPU is used.
 
-A free Space sleeps after 48 hours without visitors; the first request wakes it in about a
-minute (the page asks you to reload).
+1. Create a Space at https://huggingface.co/new-space: SDK **Gradio**, template **Blank**,
+   the free hardware offered, visibility **Public**.
+2. Replace its files with the three in `deploy/huggingface/` (`app.py`, `requirements.txt`,
+   `README.md`). At startup `app.py` clones this repository's `main` branch.
+3. Wait for **Running**. `https://<user>-<space-name>.hf.space/api/parts` should return JSON.
+4. After pushing new commits to `main`, **Restart** the Space (Settings) so it clones again.
+
+A free Space sleeps after a period without visitors; the first request wakes it, which takes a
+minute or two (the page says to reload).
 
 ## Vercel
 
 `vercel.json` builds the frontend into `dist/` and rewrites `/api/*`, `/board/*` and
-`/assets/board.jpg` to the Space, currently `https://kavypings-lpc1768-simulator.hf.space`
-(user `KavyPings`, Space `lpc1768-simulator`). If the Space host differs, change the three
-destinations and push. `LPC_ALLOWED_ORIGINS` in the Dockerfile must match the Vercel domains
-(`https://lpc-1768-simulator-extended*.vercel.app` covers production and preview URLs).
+`/assets/board.jpg` to `https://kavyyyyy-lpc1768-simulator.hf.space`. If the Space host
+changes, change the three destinations and push. `LPC_ALLOWED_ORIGINS` (set in `app.py`)
+must match the Vercel domains: `https://lpc-1768-simulator-extended*.vercel.app` covers the
+production and preview URLs.
 
 ## Any other Docker host
 
-The same image runs anywhere (Render, Fly.io, Railway, a VPS):
+`deploy/docker/Dockerfile` builds the frontend and serves the whole app in public mode with
+gunicorn (Render, Railway, a VPS, or a PRO Hugging Face Docker Space):
 
 ```bash
-docker build -t lpc1768 deploy/huggingface
+docker build -t lpc1768 deploy/docker
 docker run -p 7860:7860 lpc1768
 ```
 
-Keep it to **one** gunicorn worker process: the visitor simulators live in that process.
+Keep it to **one** worker process: the visitor simulators live in that process.

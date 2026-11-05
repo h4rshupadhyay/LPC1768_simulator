@@ -3,8 +3,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://kavypings-lpc1768-simulator.hf.space/api/:path*" },
-    { "source": "/board/:path*", "destination": "https://kavypings-lpc1768-simulator.hf.space/board/:path*" },
-    { "source": "/assets/board.jpg", "destination": "https://kavypings-lpc1768-simulator.hf.space/assets/board.jpg" }
+    { "source": "/api/:path*", "destination": "https://kavyyyyy-lpc1768-simulator.hf.space/api/:path*" },
+    { "source": "/board/:path*", "destination": "https://kavyyyyy-lpc1768-simulator.hf.space/board/:path*" },
+    { "source": "/assets/board.jpg", "destination": "https://kavyyyyy-lpc1768-simulator.hf.space/assets/board.jpg" }
   ]
 }
