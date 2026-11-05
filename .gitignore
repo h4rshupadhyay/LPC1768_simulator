@@ -9,3 +9,5 @@ build/
 .tools/
 test-results/
 playwright-report/
+# Local development worktrees and editor/preview settings (never committed).
+.claude/
